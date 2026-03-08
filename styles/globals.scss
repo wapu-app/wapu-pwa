@@ -1,0 +1,88 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;1,500&family=Squada+One&display=swap");
+
+@import './variables';
+@import "../pages/components/Navbar/navbar";
+@import "../pages/components/Header/header";
+@import "../pages/components/Features/features";
+@import "../pages/components/AboutUs/about";
+@import "../pages/components/Contact/contact";
+@import "../pages/components/Footer/footer";
+@import "../pages/components/SignUp/signup";
+@import "../pages/components/Signin/signin";
+
+//app
+@import "../components/QR-photo/qrphoto.scss";
+
+* {
+  scroll-behavior: smooth;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+body {
+  overflow-x: hidden;
+
+  /* ff 3.6+ */
+  background: -moz-radial-gradient(
+    circle at 10% 50%,
+    rgba(12, 68, 91, 1) 0%,
+    rgba(52, 32, 77, 1) 22%,
+    rgba(28, 14, 46, 1) 68%,
+    rgba(0, 0, 0, 0.93) 100%
+  );
+
+  /* safari 5.1+,chrome 10+ */
+  background: -webkit-radial-gradient(
+    circle at 10% 50%,
+    rgba(12, 68, 91, 1) 0%,
+    rgba(52, 32, 77, 1) 22%,
+    rgba(28, 14, 46, 1) 68%,
+    rgba(0, 0, 0, 0.93) 100%
+  );
+
+  /* opera 11.10+ */
+  background: -o-radial-gradient(
+    circle at 10% 50%,
+    rgba(12, 68, 91, 1) 0%,
+    rgba(52, 32, 77, 1) 22%,
+    rgba(28, 14, 46, 1) 68%,
+    rgba(0, 0, 0, 0.93) 100%
+  );
+
+  /* ie 10+ */
+  background: -ms-radial-gradient(
+    circle at 10% 50%,
+    rgba(12, 68, 91, 1) 0%,
+    rgba(52, 32, 77, 1) 22%,
+    rgba(28, 14, 46, 1) 68%,
+    rgba(0, 0, 0, 0.93) 100%
+  );
+
+  /* global 92%+ browsers support */
+  background: radial-gradient(
+    circle at 10% 50%,
+    rgba(12, 68, 91, 1) 0%,
+    rgba(52, 32, 77, 1) 22%,
+    rgba(28, 14, 46, 1) 68%,
+    rgba(0, 0, 0, 0.93) 100%
+  );
+}
+
+a {
+  text-decoration: none;
+}
+
+html {
+  height: 100%;
+  font-family: "Poppins", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    color: white;
+  }
+}

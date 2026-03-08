@@ -1,0 +1,283 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;1,500&family=Squada+One&display=swap");
+@import "../components/QR-photo/qrphoto.css";
+
+
+.webcam {
+  display: flex;
+  align-items: center;
+  flex: center;
+}
+
+.cap-photo{
+  border-radius: 50px;
+  background: blue;
+}
+
+
+.navbar {
+  height: 50px;
+  top: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 20;
+  text-decoration: none;
+}
+.navbar .logo {
+  width: 15%;
+  grid-template-columns: repeat(2, 1fr);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Squada One", cursive;
+  font-size: 25px;
+  cursor: pointer;
+  color: #D8D8D8;
+}
+.navbar .buttons_mid {
+  width: 33%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.navbar .buttons_mid .button {
+  padding: 0 20px;
+  color: #D8D8D8;
+  font-family: "Poppins";
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 30px;
+  display: flex;
+  align-items: center;
+  text-align: center;
+  justify-content: space-between;
+  border-radius: 250px;
+  cursor: pointer;
+  text-decoration: none;
+  border: 2px solid rgba(9, 43, 57, 0.001);
+  transition: all 0.3s ease;
+}
+.navbar .buttons_mid .button:hover {
+  color: #fff;
+  background-color: rgba(9, 43, 57, 0.3);
+  border: 2px solid rgba(55, 175, 101, 0.8);
+}
+.navbar .buttons_right {
+  width: 20%;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+.navbar .buttons_right .downloadbtn {
+  background: linear-gradient(270deg, rgba(235, 2, 255, 0.1) 6.12%, rgba(66, 16, 48, 0.047) 139.81%);
+  border: 1px solid #F2CC00;
+  border-radius: 50px;
+  padding: 0 20px;
+  color: #fff;
+  font-family: "Poppins";
+  font-size: 16px;
+  line-height: 40px;
+  display: flex;
+  align-items: center;
+  text-align: center;
+  justify-content: space-between;
+  cursor: pointer;
+  text-decoration: none;
+  margin: 20px;
+  transition: all 0.1s ease-out;
+}
+.navbar .buttons_right .downloadbtn:hover {
+  background-color: rgba(55, 175, 101, 0.3);
+  border: 1px solid rgba(55, 175, 101, 0.8);
+}
+
+.header {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.header .texts {
+  width: 550px;
+}
+.header .illustration {
+  display: flex;
+  position: relative;
+}
+.header .illustration .containerPersons {
+  position: absolute;
+  right: 100px;
+  top: 130px;
+}
+
+.features {
+  height: auto;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+.features .illustration {
+  display: flex;
+  position: relative;
+}
+.features .illustration .containerEther {
+  position: absolute;
+  top: 50px;
+  left: 150px;
+}
+.features .texts {
+  width: 530px;
+  height: 440px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.features .texts .segundo {
+  width: 430px;
+}
+.features .texts .tercero {
+  width: 480px;
+}
+
+.about {
+  height: 800px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+}
+.about .texts {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.about .texts p {
+  width: 500px;
+  text-align: center;
+}
+.about .cards {
+  display: flex;
+  width: 100vw;
+  justify-content: space-evenly;
+}
+.about .cards .card {
+  min-height: 350px;
+  width: 350px;
+  border-radius: 20px;
+  background-color: #8166A0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+}
+.about .cards .card svg {
+  font-size: 4rem;
+}
+.about .cards .card p {
+  width: 300px;
+  min-height: 150px;
+}
+
+.contact {
+  height: 600px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+.contact .texts {
+  height: 250px;
+  width: 550px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.contact .texts .buttonsDownload {
+  display: flex;
+  justify-content: space-between;
+  width: 320px;
+}
+
+.footer {
+  height: 300px;
+  width: 100vw;
+  padding: 100px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  background-color: #8166A0;
+}
+.footer .map {
+  width: 70vw;
+  padding-top: 50px;
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid #CBB5E6;
+}
+.footer .map .mapNav {
+  width: 550px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+.footer .map .mapNav a {
+  color: #FBFBFB;
+  transition: all 0.3s ease-in;
+}
+.footer .map .mapNav a:hover {
+  color: #1C0E2E;
+  transition: all 0.3s ease-in;
+}
+.footer .map .socialLinks {
+  width: 150px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+.footer .map .socialLinks svg {
+  font-size: 2rem;
+  transition: all 0.3s ease-in;
+}
+.footer .map .socialLinks svg:hover {
+  color: #1C0E2E;
+  transition: all 0.3s ease-in;
+}
+
+* {
+  scroll-behavior: smooth;
+  box-sizing: border-box;
+}
+
+body {
+  overflow-x: hidden;
+  /* ff 3.6+ */
+  /* safari 5.1+,chrome 10+ */
+  /* opera 11.10+ */
+  /* ie 10+ */
+  /* global 92%+ browsers support */
+  background: radial-gradient(circle at 10% 50%, rgb(12, 68, 91) 0%, rgb(52, 32, 77) 22%, rgb(28, 14, 46) 68%, rgba(0, 0, 0, 0.93) 100%);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+html {
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  font-family: "Poppins", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    color: white;
+    background: #211134;
+  }
+}/*# sourceMappingURL=globals.css.map */

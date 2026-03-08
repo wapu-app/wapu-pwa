@@ -1,0 +1,77 @@
+
+.navbar {
+    height: 70px;
+	top: 0;
+	width: 100%;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	z-index: 2222;
+	text-decoration: none;
+
+	.logo {
+		width: 15%;
+		grid-template-columns: repeat(2, 1fr);
+		display: inline-flex;
+        align-items: center;
+        justify-content: center;
+		font-family: 'Squada One', cursive;
+		font-size: 25px;
+		cursor: pointer;
+		color: $base;
+	}
+
+	.buttons_mid {
+		width: 33%;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		.button {
+			padding: 0 20px;
+			color: $base;
+			font-family: 'Poppins';
+			font-weight: 500;
+			font-size: 16px;
+			line-height: 30px;
+			display: flex;
+			align-items: center;
+			text-align: center;
+			justify-content: space-between;
+			border-radius: 250px;
+			cursor: pointer;
+			text-decoration: none;
+			border: 2px solid rgba( 9, 43, 57, 0.001 );
+			transition: all 0.3s ease;
+			&:hover {
+				color: #fff;
+				background-color: rgba( 9, 43, 57, 0.3 );
+				border: 2px solid rgba( 55, 175, 101, 0.8 );
+			}
+		}
+	}
+	.buttons_right {
+		display: flex;
+		justify-content: space-around;
+		align-items: center;
+		.downloadbtn {
+			background: $gradientviolet;
+			border: 1px solid $base;
+			border-radius: 50px;
+			padding: 0 45px;
+			color: $base;
+			font-family: 'Poppins';
+			font-size: 16px;
+			line-height: 40px;
+			margin: 20px;
+			cursor: pointer;
+			text-decoration: none;
+			transition: all 0.3s ease-out;
+			&:hover {
+				background-color: rgba( 55, 175, 101, 0.3 );
+				border: 1px solid rgba( 55, 175, 101, 0.8 );
+			}
+		}
+	}
+	
+}
+
