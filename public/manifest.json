@@ -1,0 +1,22 @@
+{
+    "theme_color": "#101010",
+    "background_color": "#101010",
+    "display": "standalone",
+    "scope": "/",
+    "start_url": "/home",
+    "name": "Wapu Pay",
+    "short_name": "Wapu",
+    "description": "With Wapu Pay, you can effortlessly pay in ARG pesos using your crypto funds through QR codes or bank transfers to popular local payment apps in Argentina.",
+    "icons": [
+        {
+            "src": "/wapu_512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "/wapu_192x192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        }
+    ]
+}

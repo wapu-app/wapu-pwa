@@ -1,0 +1,17 @@
+name: Build React Application
+on:
+  pull_request:
+    branches: [ develop, staging ]
+
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build 

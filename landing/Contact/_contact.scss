@@ -1,0 +1,19 @@
+.contact{
+    height: 600px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    .texts{
+        height: 250px;
+        width: 550px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        .buttonsDownload{
+            display: flex;
+            justify-content: space-between;
+            width: 320px;
+        }
+    }
+    
+}

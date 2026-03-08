@@ -1,0 +1,30 @@
+.features{
+    height: auto;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    .illustration{
+        display: flex;
+        position: relative;
+        .containerEther{
+            position: absolute;
+            top: 50px;
+            left: 150px;
+        }
+    }
+    .texts{
+        width: 530px;
+        height: 440px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: flex-end;
+
+        .segundo{
+            width: 430px;
+        }
+        .tercero{
+            width: 480px;
+        }
+    }
+}

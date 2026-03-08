@@ -1,0 +1,24 @@
+@keyframes slideBG {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.animatedBackground {
+    background-image: linear-gradient(
+        -305deg,
+        #4e1a28 0%,
+        #822c43 25%,
+        #500d35 50%,
+        #000f5ccc 75%,
+        #00082f 100%
+    );
+    animation: slideBG 20s ease infinite;
+    background-size: 150% 150%;
+}

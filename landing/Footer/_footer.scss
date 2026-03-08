@@ -1,0 +1,45 @@
+.footer{
+    height: 300px;
+    width: 100vw;
+    padding: 100px 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+    background-color: #8166A0;
+    .map{
+        width: 70vw;
+        padding-top: 50px;
+        display: flex;
+        justify-content: space-between;
+        border-top: 1px solid #CBB5E6;
+        .mapNav{
+            width: 550px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            a{
+                color: #FBFBFB;
+                transition: all .3s ease-in;
+            }
+            a:hover{
+                color: #1C0E2E;
+                transition: all .3s ease-in;
+            }
+        }
+        .socialLinks{
+            width: 150px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            svg{
+                font-size: 2rem;
+                transition: all .3s ease-in;
+            }
+            svg:hover{
+                color: #1C0E2E;
+                transition: all .3s ease-in;
+            }
+        }
+    }
+}
