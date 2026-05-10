@@ -9,7 +9,23 @@ frontend:
         - npm ci
     build:
       commands:
-        - npm run env:stg
+        - |
+          echo "Selecting frontend environment for AWS_BRANCH=${AWS_BRANCH:-unknown}"
+          case "${AWS_BRANCH:-}" in
+            staging)
+              npm run env:stg
+              ;;
+            main|prod|production)
+              npm run env:prod
+              ;;
+            qa|develop)
+              npm run env:qa
+              ;;
+            *)
+              echo "Unknown AWS_BRANCH='${AWS_BRANCH:-}'. Falling back to qa environment."
+              npm run env:qa
+              ;;
+          esac
         - npm run build
   artifacts:
     baseDirectory: .next
