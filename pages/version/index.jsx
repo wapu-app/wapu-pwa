@@ -35,7 +35,7 @@ export default function VersionPage () {
         fetchBuildInfo();
     }, []);
 
-    const frontend_release = "0.28.1";
+    const frontend_release = "1.0";
 
     const formatBuildTime = (iso) => {
         if (!iso) return "—";
