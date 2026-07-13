@@ -7,6 +7,11 @@ then
   exit 1;
 fi
 
+# El archivo config/environment/current/index.js está gitignoreado, por lo que
+# el directorio no existe en un clone limpio (CI/Amplify). Lo creamos siempre
+# antes del cp para evitar "cp: No such file or directory".
+mkdir -p config/environment/current
+
 if [ $1 = 'local' ]
 then
     echo "Setting environment to 'local'..."
