@@ -284,7 +284,7 @@ export default function index() {
                                             }
                                         />
                                     ) : (
-                                        ""
+                                        null
                                     )}
                                     {/* PROGRESS BAR */}
                                     <XStack
@@ -375,7 +375,7 @@ export default function index() {
                     gap={"$8"}
                     justifyContent="space-between"
                 >
-                    <YStack /> {/* To balance layout */}
+                    <YStack />{/* To balance layout */}
                     {errorMessage ? (
                         <TamaguiGuide
                             type={"error"}

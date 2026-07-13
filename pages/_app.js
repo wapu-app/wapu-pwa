@@ -42,16 +42,8 @@ function MyApp({ Component, pageProps }) {
                     <></>
                 )}
                 <link rel="manifest" href={metadata.manifest} />
-                <link
-                    rel="stylesheet"
-                    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
-                />
-                <link href="https://api.fontshare.com/v2/css?f[]=clash-display@1&display=swap" rel="stylesheet"/>
-                {/* Geist (Sans + Mono), used by the price-calculator screen; loaded app-wide to cache it. */}
-                <link
-                    rel="stylesheet"
-                    href="https://fonts.googleapis.com/css2?family=Geist:wght@400;800&family=Geist+Mono:wght@400;500;600&display=swap"
-                />
+                {/* Font stylesheets moved to pages/_document.js (Next.js warns
+                    against <link rel="stylesheet"> in next/head). */}
                 <link rel="icon" href="/wapu_logo_1.ico" />
                 <meta name="mobile-web-app-capable" content="yes" />
                 <meta name="apple-mobile-web-app-capable" content="yes" />

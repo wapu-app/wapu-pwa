@@ -173,7 +173,7 @@ export default function index() {
                     />
                 </YStack>
             ) : (
-                ""
+                null
             )}
 
             <ExchangeRateCard onPress={() => setIsCalculatorOpen(true)} />

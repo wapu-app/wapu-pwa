@@ -129,7 +129,7 @@ export const Navbar = () => {
                         </CustomLink>
                     </NavbarButton>
                 ) : (
-                    ""
+                    null
                 )}
                 <NavbarButton
                     onClick={() => {

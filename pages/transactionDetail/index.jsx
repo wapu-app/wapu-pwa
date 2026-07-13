@@ -111,7 +111,7 @@ export default function TransactionDetailPage() {
                                         </CustomText>
                                     </ContainerInfo>
                                 ) : (
-                                    ""
+                                    null
                                 )}
                                 {movement.sender_username !== null ? (
                                     <ContainerInfo>
@@ -121,7 +121,7 @@ export default function TransactionDetailPage() {
                                         </CustomText>
                                     </ContainerInfo>
                                 ) : (
-                                    ""
+                                    null
                                 )}
                                 {movement.type === "fiat_transfer" ||
                                 movement.type === "fast_fiat_transfer" ? (
@@ -132,7 +132,7 @@ export default function TransactionDetailPage() {
                                         </CustomText>
                                     </ContainerInfo>
                                 ) : (
-                                    ""
+                                    null
                                 )}
                                 <ContainerInfo>
                                     <CustomText>Date:</CustomText>
@@ -199,7 +199,7 @@ export default function TransactionDetailPage() {
                                 text="Cancel"
                             />
                         ) : (
-                            ""
+                            null
                         )}
                     </ButtonContainer>
                 </CustomDetail>
@@ -217,7 +217,7 @@ export default function TransactionDetailPage() {
                     />
                 </>
             ) : (
-                ""
+                null
             )}
         </>
     );

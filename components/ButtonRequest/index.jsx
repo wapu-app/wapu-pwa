@@ -34,7 +34,7 @@ export const ButtonRequest = ({ text, onClick, type, href, isDisabled }) => {
                     }}
                 >
                     <CustomLink href={href}>{text}</CustomLink>
-                    {pressed ? <CustomLoader /> : ""}
+                    {pressed ? <CustomLoader /> : null}
                 </CustomButtonRequest>
             ) : (
                 <CustomButtonRequest
@@ -49,7 +49,7 @@ export const ButtonRequest = ({ text, onClick, type, href, isDisabled }) => {
                     }
                 >
                     {text}
-                    {pressed ? <CustomLoader /> : ""}
+                    {pressed ? <CustomLoader /> : null}
                 </CustomButtonRequest>
             )}
         </>
