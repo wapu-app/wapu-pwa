@@ -50,3 +50,6 @@ survivors/survivors.code-workspace
 
 # AI
 .tldr/
+.omc/
+.omx/
+.omo/

@@ -119,7 +119,7 @@ function send() {
             "1- Ask the recipient for his Wapu username. It is in the home screen.",
         content2: "2- Write the amount in dolars that you want to send.",
         content3: "",
-        href: "https://wapupay.com/help/",
+        href: "https://wapupay.com/#ayuda",
         text_button: "More info",
         target: "_blank",
     };

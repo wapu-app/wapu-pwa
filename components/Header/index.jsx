@@ -29,7 +29,6 @@ export const Header = () => {
         "/home",
         "/newSend",
         "/newFastSend",
-        "/newVerifyEmail",
         "/newTransactionComplete",
         "/version",
         "/newTransactionPending",

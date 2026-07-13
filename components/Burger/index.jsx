@@ -1,34 +1,26 @@
-import Profile from "../../public/icons/profile_black.svg";
-import Verified from "../../public/icons/verified_black.svg";
-import emailIcon from "../../public/icons/email_black_24dp.svg";
-import Support from "../../public/icons/support_black.svg";
-import Movements from "../../public/icons/movements_black.svg";
-import Withdrawal from "../../public/icons/withdrawal_black.svg";
-import Close from "../../public/icons/close_black.svg";
-import Help from "../../public/icons/help_black.svg";
-import Lightbulb from "../../public/icons/lightbulb_black.svg";
-
+"use client";
 import { useEffect, useState } from "react";
-import Invitations from "../../public/icons/invitations_black.svg";
+import { useRouter } from "next/navigation";
+import { useMediaQuery } from "@react-hook/media-query";
+import { Dialog, ScrollView, Text, YStack } from "tamagui";
+
+import Profile from "../../public/icons/profile_white.svg";
+import emailIcon from "../../public/icons/email_white.svg";
+import Support from "../../public/icons/support_white.svg";
+import Movements from "../../public/icons/movements_white.svg";
+import Withdrawal from "../../public/icons/withdrawal_white.svg";
+import Help from "../../public/icons/help_white.svg";
+import Lightbulb from "../../public/icons/lightbulb_white.svg";
+import Invitations from "../../public/icons/invitations_white.svg";
+import ApiKeyIcon from "../../public/icons/bolt_white_24dp.svg";
+import menuIcon from "../../public/icons/Ic_round/ProfileDefault.svg";
+
+import TamaguiIconButton from "../TamaguiIconButton";
+import NewHeaderButton from "../newHeaderButton";
+import MenuRow from "./MenuRow";
 import Logout from "../logout/logout";
 import Referral from "../Referral/referral";
 import { sendVerificationEmail, getSettings } from "../../api/api";
-
-import {
-    MenuButton,
-    Toggle,
-    Bars,
-    CloseModal,
-    BurgerButton,
-    customStyles,
-    WindowModal,
-    AccountMenu,
-    XIcon,
-    CustomIcon,
-    CustomLink,
-    BurgerContainer,
-} from "./styled";
-import { useRouter } from "next/navigation";
 import ErrorModal from "../ErrorModal";
 import { useUserContext } from "../../context/userContext";
 
@@ -37,9 +29,11 @@ function Burger({ newDesign = false, close = null, externalIsOpen = null }) {
     const [isReferralOpen, setIsReferralOpen] = useState(false);
     const [isEmailSendOpen, setIsEmailSendOpen] = useState(false);
     const [feedbackUrl, setFeedbackUrl] = useState("");
-    const [externalKycUrl, setExternalKycUrl] = useState("");
     const router = useRouter();
     const { user, getUser } = useUserContext();
+    // Mirrors the original BurgerContainer media query: the self-toggle
+    // trigger only shows on narrow viewports (Navbar covers desktop).
+    const isMobile = useMediaQuery("(max-width: 1023px)");
 
     const handleCloseModal = () => {
         setIsOpen(false);
@@ -55,18 +49,6 @@ function Burger({ newDesign = false, close = null, externalIsOpen = null }) {
         return isOpen;
     };
 
-    const bars = [
-        {
-            id: "bar1",
-        },
-        {
-            id: "bar2",
-        },
-        {
-            id: "bar3",
-        },
-    ];
-
     useEffect(() => {
         getUser();
     }, []);
@@ -74,7 +56,6 @@ function Burger({ newDesign = false, close = null, externalIsOpen = null }) {
     useEffect(() => {
         async function fetchSettings() {
             const settings = await getSettings();
-            setExternalKycUrl(settings.external_kyc_url);
             setFeedbackUrl(settings.feedback_url);
         }
         fetchSettings();
@@ -89,166 +70,171 @@ function Burger({ newDesign = false, close = null, externalIsOpen = null }) {
         }
     };
 
+    const handleProfileClick = () => {
+        handleCloseModal();
+        router.push("/profile");
+    };
+
+    const handleInvitationsClick = () => {
+        handleCloseModal();
+        setIsReferralOpen(true);
+    };
+
+    const handleMovementsClick = () => {
+        handleCloseModal();
+        router.push("/newMovements");
+    };
+
+    const handleApiKeyClick = () => {
+        handleCloseModal();
+        router.push("/apiKey");
+    };
+
+    const handleWithdrawalClick = () => {
+        handleCloseModal();
+        router.push("/newWithdrawal");
+    };
+
     return (
-        <BurgerContainer>
-            {newDesign ? (
-                <></>
-            ) : (
-                <BurgerButton onClick={() => setIsOpen(true)}>
-                    <Toggle>
-                        {bars.map((i) => (
-                            <Bars key={i.id} id={i.id} />
-                        ))}
-                    </Toggle>
-                </BurgerButton>
+        <>
+            {!newDesign && isMobile && (
+                <TamaguiIconButton
+                    icon={menuIcon}
+                    onClick={() => setIsOpen(true)}
+                />
             )}
 
-            <WindowModal
-                isOpen={isModalOpen()}
-                onRequestClose={handleCloseModal}
-                style={customStyles}
+            <Dialog
+                modal
+                open={isModalOpen()}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        handleCloseModal();
+                    }
+                }}
             >
-                <CloseModal onClick={handleCloseModal}>
-                    <XIcon width={20} height={20} src={Close} alt={"Close"} />
-                </CloseModal>
-                <AccountMenu>
-                    {user.editProfile ? (
-                        <MenuButton>
-                            <CustomIcon
-                                width={20}
-                                height={20}
-                                src={Profile}
-                                alt="profile"
-                            />
-                            <CustomLink
-                                href={"/profile"}
+                <Dialog.Portal>
+                    <Dialog.Overlay
+                        key="overlay"
+                        animation="slow"
+                        opacity={0.9}
+                        enterStyle={{ opacity: 0 }}
+                        exitStyle={{ opacity: 0 }}
+                        style={{
+                            backgroundColor: "rgba(0, 0, 0, 0.8)",
+                            zIndex: 10,
+                        }}
+                    />
+                    <Dialog.Content
+                        key="content"
+                        elevate
+                        animation={[
+                            "quicker",
+                            { opacity: { overshootClamping: true } },
+                        ]}
+                        enterStyle={{ opacity: 0 }}
+                        exitStyle={{ opacity: 0 }}
+                        backgroundColor={"$neutral1"}
+                        width={"100%"}
+                        height={"100%"}
+                        maxWidth={"100%"}
+                        maxHeight={"100%"}
+                        margin={0}
+                        borderRadius={0}
+                        borderWidth={0}
+                        padding={"$3.5"}
+                        style={{
+                            position: "fixed",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            // calc() keeps the token padding as a floor and only
+                            // adds extra clearance on notched devices, instead of
+                            // env() (0px on non-notched devices) replacing it.
+                            paddingTop: "calc(env(safe-area-inset-top) + 16px)",
+                            paddingBottom:
+                                "calc(env(safe-area-inset-bottom) + 16px)",
+                        }}
+                    >
+                        <YStack flex={1} width={"$width100"} height={"$height100"}>
+                            <NewHeaderButton
+                                isCloseButton
                                 onClick={handleCloseModal}
-                            >
-                                Profile
-                            </CustomLink>
-                        </MenuButton>
-                    ) : (
-                        ""
-                    )}
-                    <MenuButton
-                        onClick={() => {
-                            if (user.kycStatus == "Incomplete") {
-                                handleCloseModal();
-                                router.push(
-                                    externalKycUrl +
-                                        "?username=" +
-                                        encodeURIComponent(user.username)
-                                );
-                            }
-                        }}
-                    >
-                        <CustomIcon
-                            width={20}
-                            height={20}
-                            src={Verified}
-                            alt="Verified"
-                        />
-                        KYC Verification - {user.kycStatus}
-                    </MenuButton>
-                    <MenuButton
-                        onClick={() => {
-                            handleCloseModal();
-                            setIsReferralOpen(true);
-                        }}
-                    >
-                        <CustomIcon
-                            width={20}
-                            height={20}
-                            src={Invitations}
-                            alt="Referral"
-                        />
-                        Invitations
-                    </MenuButton>
-                    <MenuButton>
-                        <CustomIcon
-                            width={20}
-                            height={20}
-                            src={Movements}
-                            alt="Movements"
-                        />
-                        <CustomLink
-                            href={"/movements"}
-                            onClick={handleCloseModal}
-                        >
-                            Movements
-                        </CustomLink>
-                    </MenuButton>
-                    <MenuButton>
-                        <CustomIcon
-                            width={20}
-                            height={20}
-                            src={Withdrawal}
-                            alt="withdrawal"
-                        />
-                        <CustomLink
-                            href={"/withdrawal"}
-                            onClick={handleCloseModal}
-                        >
-                            Withdrawal
-                        </CustomLink>
-                    </MenuButton>
-                    <MenuButton>
-                        <CustomIcon
-                            width={20}
-                            height={20}
-                            src={Lightbulb}
-                            alt="lightbulb"
-                        />
-                        <CustomLink
-                            href={feedbackUrl}
-                            onClick={handleCloseModal}
-                        >
-                            Feedback
-                        </CustomLink>
-                    </MenuButton>
-                    <MenuButton>
-                        <CustomIcon
-                            width={20}
-                            height={20}
-                            src={Support}
-                            alt="Support"
-                        />
-                        <CustomLink
-                            href={"https://wa.me/5491124060850"}
-                            onClick={handleCloseModal}
-                        >
-                            Support
-                        </CustomLink>
-                    </MenuButton>
-                    {!user.verified && (
-                        <MenuButton onClick={handleEmailVerification}>
-                            <CustomIcon
-                                width={20}
-                                height={20}
-                                src={emailIcon}
-                                alt="Email"
                             />
-                            Send email verification
-                        </MenuButton>
-                    )}
-                    <MenuButton>
-                        <CustomIcon
-                            width={20}
-                            height={20}
-                            src={Help}
-                            alt="Help"
-                        />
-                        <CustomLink
-                            href={"https://wapupay.com/help/"}
-                            onClick={handleCloseModal}
-                            target="_blank"
-                        >
-                            Help F.A.Q
-                        </CustomLink>
-                    </MenuButton>
-                    <Logout />
-                </AccountMenu>
-            </WindowModal>
+                            <Text
+                                fontFamily={"$heading"}
+                                fontSize={"$4"}
+                                color={"$neutral13"}
+                                fontWeight={"$2"}
+                                marginTop={"$3.5"}
+                                marginBottom={"$2.5"}
+                            >
+                                My Account
+                            </Text>
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                <YStack gap={"$1"} paddingBottom={"$8"}>
+                                    {user.editProfile && (
+                                        <MenuRow
+                                            icon={Profile}
+                                            label={"Profile"}
+                                            onPress={handleProfileClick}
+                                        />
+                                    )}
+                                    <MenuRow
+                                        icon={ApiKeyIcon}
+                                        label={"API key"}
+                                        onPress={handleApiKeyClick}
+                                    />
+                                    <MenuRow
+                                        icon={Invitations}
+                                        label={"Invitations"}
+                                        onPress={handleInvitationsClick}
+                                    />
+                                    <MenuRow
+                                        icon={Movements}
+                                        label={"Movements"}
+                                        onPress={handleMovementsClick}
+                                    />
+                                    <MenuRow
+                                        icon={Withdrawal}
+                                        label={"Withdrawal"}
+                                        onPress={handleWithdrawalClick}
+                                    />
+                                    <MenuRow
+                                        icon={Lightbulb}
+                                        label={"Feedback"}
+                                        href={feedbackUrl}
+                                        onPress={handleCloseModal}
+                                    />
+                                    <MenuRow
+                                        icon={Support}
+                                        label={"Support"}
+                                        href={"https://wa.me/5491124060850"}
+                                        onPress={handleCloseModal}
+                                    />
+                                    {!user.verified && (
+                                        <MenuRow
+                                            icon={emailIcon}
+                                            label={"Send email verification"}
+                                            onPress={handleEmailVerification}
+                                        />
+                                    )}
+                                    <MenuRow
+                                        icon={Help}
+                                        label={"Help F.A.Q"}
+                                        href={"https://wapupay.com/#ayuda"}
+                                        target={"_blank"}
+                                        onPress={handleCloseModal}
+                                    />
+                                    <Logout />
+                                </YStack>
+                            </ScrollView>
+                        </YStack>
+                    </Dialog.Content>
+                </Dialog.Portal>
+            </Dialog>
+
             <ErrorModal
                 message={
                     "We've just sent you an email, please check your inbox."
@@ -257,7 +243,7 @@ function Burger({ newDesign = false, close = null, externalIsOpen = null }) {
                 errorModalOnRequestClose={() => setIsEmailSendOpen(false)}
             />
             <Referral isOpen={isReferralOpen} setIsOpen={setIsReferralOpen} />
-        </BurgerContainer>
+        </>
     );
 }
 

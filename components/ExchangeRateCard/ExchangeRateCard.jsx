@@ -6,11 +6,13 @@ import { useUserContext } from "../../context/userContext";
 import argentinaFlag from "../../public/icons/argentinaFlag.svg";
 import usdtIcon from "../../public/icons/USDT.svg";
 
-export default function ExchangeRateCard() {
+export default function ExchangeRateCard({ onPress }) {
     const { user } = useUserContext();
 
     return (
         <XStack
+            onPress={onPress}
+            cursor="pointer"
             width="$width90"
             display="flex"
             justifyContent="space-between"

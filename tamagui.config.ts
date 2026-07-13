@@ -142,6 +142,14 @@ export const tokens = createTokens({
         semanticYellow: "#F5D90A",
         semanticBlue: "#4202C9",
         semanticGray: "#CCBECB",
+        // Brand manual (v1.0) accents/neutrals not covered by the scales above (pink500/blue500 already match "Wapu Pink"/"Electric Blue").
+        brandInk: "#0A0712", // base background ("Ink")
+        brandSurface: "#1D1A24", // surface on top of Ink
+        brandSurfaceDeep: "#14121A", // derived (NOT a manual color): darker input surface for depth
+        brandDeepPurple: "#7309B6", // end of the pink→purple gradient
+        brandVolt: "#F8F46B", // yellow accent ("Volt")
+        brandMint: "#7CFFD8", // cold mint accent
+        brandOffWhite: "#F3F4F6", // text on Ink (AAA)
         transparent: "transparent",
     },
 });

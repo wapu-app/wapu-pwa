@@ -35,10 +35,14 @@ export default function NewBlockchainDeposit() {
     const [errorMessage, setErrorMessage] = useState("");
     const [errorModalState, setErrorModalState] = useState(false);
 
-    const currencyOptions = [
+    const ALL_CURRENCIES = [
         { name: "USDT", id: "USDT" },
         { name: "USDC", id: "USDC" },
     ];
+    const currencyOptions =
+        blockchain.network === "LIQUID"
+            ? [{ name: "USDT", id: "USDT" }]
+            : ALL_CURRENCIES;
 
     const handleAmountChange = (value) => {
         setAmountError(false);
@@ -57,8 +61,14 @@ export default function NewBlockchainDeposit() {
     const handleNetworkChange = (index) => {
         const selectedBlockchain = blockchainsOptions.at(index);
         setBlockchain(selectedBlockchain);
-        setAddress(selectedBlockchain.address);
         setNetworkName(selectedBlockchain.name);
+        // Liquid uses per-order derived addresses returned by the POST, so we
+        // never pre-cache an address from the network metadata. The other
+        // networks already get their address from the POST response below, so
+        // pre-caching is unnecessary everywhere.
+        if (selectedBlockchain.network === "LIQUID") {
+            setCurrency("USDT");
+        }
     };
 
     const handleCurrencyChange = (index) => {
@@ -95,6 +105,9 @@ export default function NewBlockchainDeposit() {
 
                 if (status === 200 || status === 201) {
                     setTransactionId(data.transaction_id);
+                    if (data.address_destination) {
+                        setAddress(data.address_destination);
+                    }
                     setStep(2);
                 } else if (status >= 400 && status <= 500) {
                     setErrorMessage(data.error);

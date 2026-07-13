@@ -200,7 +200,7 @@ function send() {
             "2- Ask for their ALIAS, CBU or CVU (either works as they identify the bank account).",
         content3:
             "If you have the account holder or business name, it's helpful, but optional.",
-        href: "https://wapupay.com/help/",
+        href: "https://wapupay.com/#ayuda",
         text_button: "More info",
         target: "_blank",
     };

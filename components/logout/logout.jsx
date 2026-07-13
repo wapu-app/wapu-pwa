@@ -1,6 +1,6 @@
 "use client";
-import Logout from "../../public/icons/logout_black.svg";
-import { MenuButton, CustomIcon } from "../Burger/styled";
+import LogoutIcon from "../../public/icons/logout_white.svg";
+import MenuRow from "../Burger/MenuRow";
 import userLogout from "../../utils/userLogout";
 import Cookies from "js-cookie";
 
@@ -13,12 +13,5 @@ export default function logout() {
             console.log(error);
         }
     };
-    return (
-        <>
-            <MenuButton onClick={handleLogout} text="Log Out">
-                <CustomIcon width={20} height={20} src={Logout} alt={Logout} />
-                Log out
-            </MenuButton>
-        </>
-    );
+    return <MenuRow icon={LogoutIcon} label={"Log out"} onPress={handleLogout} />;
 }

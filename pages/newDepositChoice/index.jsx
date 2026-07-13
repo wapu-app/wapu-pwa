@@ -5,9 +5,11 @@ import BlockchainIcon from "../../public/blockchain_deposit_icon.svg";
 import AlternativeIcon from "../../public/alternative_deposit_icon.svg";
 import LightningIcon from "../../public/lightning_deposit_icon.svg";
 import NewHeaderButton from "../../components/newHeaderButton";
+import { useUserContext } from "../../context/userContext";
 
 function index() {
     const router = useRouter();
+    const { user } = useUserContext();
 
     const handleBackClick = () => {
         router.back();
@@ -118,45 +120,47 @@ function index() {
                     </XStack>
                     <XStack />
                 </XStack>
-                <XStack
-                    width={"$width100"}
-                    padding={"$3.5"}
-                    borderRadius={"$1_5"}
-                    borderWidth={"1"}
-                    borderColor={"$neutral3"}
-                    backgroundColor={"$neutral3"}
-                    gap={"$2"}
-                    justifyContent="space-between"
-                >
+                {user.alternativeDeposit && (
                     <XStack
-                        gap={"$3"}
-                        alignItems="flex-start"
-                        onPress={() => {
-                            router.push("/newAlternativeDeposit");
-                        }}
+                        width={"$width100"}
+                        padding={"$3.5"}
+                        borderRadius={"$1_5"}
+                        borderWidth={"1"}
+                        borderColor={"$neutral3"}
+                        backgroundColor={"$neutral3"}
+                        gap={"$2"}
+                        justifyContent="space-between"
                     >
-                        <Image src={AlternativeIcon} alt="icon" />
-                        <YStack>
-                            <Paragraph
-                                color={"$neutral13"}
-                                size={"$4"}
-                                weight={"$2"}
-                                textAlign="left"
-                            >
-                                Other Alternative
-                            </Paragraph>
-                            <Paragraph
-                                color={"$neutral10"}
-                                size={"$5"}
-                                weight={"$2"}
-                                textAlign="left"
-                            >
-                                3% of transaction cost
-                            </Paragraph>
-                        </YStack>
+                        <XStack
+                            gap={"$3"}
+                            alignItems="flex-start"
+                            onPress={() => {
+                                router.push("/newAlternativeDeposit");
+                            }}
+                        >
+                            <Image src={AlternativeIcon} alt="icon" />
+                            <YStack>
+                                <Paragraph
+                                    color={"$neutral13"}
+                                    size={"$4"}
+                                    weight={"$2"}
+                                    textAlign="left"
+                                >
+                                    Other Alternative
+                                </Paragraph>
+                                <Paragraph
+                                    color={"$neutral10"}
+                                    size={"$5"}
+                                    weight={"$2"}
+                                    textAlign="left"
+                                >
+                                    3% of transaction cost
+                                </Paragraph>
+                            </YStack>
+                        </XStack>
+                        <XStack />
                     </XStack>
-                    <XStack />
-                </XStack>
+                )}
             </YStack>
         </YStack>
     );
