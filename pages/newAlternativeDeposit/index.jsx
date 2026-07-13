@@ -101,7 +101,7 @@ function index() {
                         secondary
                     />
                 ) : (
-                    ""
+                    null
                 )}
             </YStack>
         </YStack>

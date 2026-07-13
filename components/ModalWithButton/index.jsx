@@ -29,7 +29,7 @@ function ModalWithButton({ content, state, errorModalOnRequestClose }) {
                             text={content.secondaryButton}
                         />
                     ) : (
-                        ""
+                        null
                     )}
                     <Button
                         onClick={content.primaryButtonOnClick}

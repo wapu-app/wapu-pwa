@@ -127,7 +127,7 @@ export default function TransactionCompletePage() {
                             text="Cancel"
                         />
                     ) : (
-                        ""
+                        null
                     )}
                 </ButtonContainer>
             </SectionContainer>
