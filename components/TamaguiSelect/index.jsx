@@ -32,6 +32,7 @@ export const TamaguiSelect = ({ value, onChange, items, placeholder }) => {
                 </Select.Value>
                 <Image
                     src={arrowDown}
+                    alt=""
                     style={{ width: "16px", height: "auto" }}
                 />
             </Select.Trigger>

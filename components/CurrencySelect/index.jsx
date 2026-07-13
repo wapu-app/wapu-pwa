@@ -37,6 +37,7 @@ export const CurrencySelect = ({ value, onChange, items }) => {
                 </Select.Value>
                 <Image
                     src={arrowDown}
+                    alt=""
                     style={{ width: "16px", height: "auto" }}
                 />
             </Select.Trigger>
