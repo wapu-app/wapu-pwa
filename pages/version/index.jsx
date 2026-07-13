@@ -2,16 +2,26 @@ import { useState, useEffect } from "react";
 import { getVersion } from "../../api/api";
 
 export default function VersionPage () {
-    const [message, setMessage] = useState(null);
+    const [backend, setBackend] = useState(null);
+    const [backendError, setBackendError] = useState(null);
     const [buildInfo, setBuildInfo] = useState(null);
 
     useEffect(() => {
         const fetchVersion = async () => {
             try {
                 const response = await getVersion();
-                setMessage(response.data);
+                // El backend puede devolver 200 con un body inesperado (o un
+                // 502 con HTML que igual "parsea" como texto en algún proxy):
+                // solo confiamos en el dato si trae la forma esperada.
+                if (response?.data?.backend) {
+                    setBackend(response.data.backend);
+                } else {
+                    setBackendError("Respuesta inesperada del backend");
+                }
             } catch (error) {
-                setMessage(error.message);
+                // apiRequest siempre relanza como Error(string) (ej: 502 con
+                // HTML en vez de JSON, o bloqueo CORS). Nunca debe tumbar el render.
+                setBackendError(error?.message || "Backend no disponible");
             }
         };
         fetchVersion();
@@ -51,10 +61,12 @@ export default function VersionPage () {
             <br/>Release: {frontend_release}
             <br/>Commit: {buildInfo ? buildInfo.commit : "Loading..."}
             <br/>Build: {buildInfo ? formatBuildTime(buildInfo.buildTime) : "Loading..."}</p>
-            {message ? (
+            {backend ? (
                 <p>Backend
-                <br/>Release: {message.backend?.release}
-                <br/>Commit sha: {message.backend?.commit_sha}</p>
+                <br/>Release: {backend.release ?? "—"}
+                <br/>Commit sha: {backend.commit_sha ?? "—"}</p>
+            ) : backendError ? (
+                <p>Backend: no disponible ({backendError})</p>
             ) : (
                 <p>Backend: Loading...</p>
             )}
