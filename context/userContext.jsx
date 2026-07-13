@@ -27,6 +27,23 @@ export const UserContextProvider = ({ children }) => {
         const settings = await getSettings();
         return settings;
     };
+
+    // Route an unauthenticated visitor to the right sign-up screen. A failing
+    // /settings fetch (backend down, network, CORS) must never block the
+    // redirect: default to /signup (which itself redirects to /newSignUp) so the
+    // app degrades gracefully instead of hanging on a blank page.
+    const redirectToSignup = async () => {
+        let destination = "/signup";
+        try {
+            const settings = await getDesignVersion();
+            if (settings?.webapp_design === "tamagui-1.0") {
+                destination = "/newSignUp";
+            }
+        } catch (error) {
+            // keep the /signup default
+        }
+        router.push(destination);
+    };
     const userFetchPromise = useRef(null);
 
     const getUser = () => {
@@ -42,8 +59,7 @@ export const UserContextProvider = ({ children }) => {
             try {
                 const userData = await fetchUserData();
                 if (userData.status === 401 || userData.status === 422) {
-                    const settings = await getDesignVersion();
-                    router.push(settings?.webapp_design === "tamagui-1.0" ? "/newSignUp" : `/signup`);
+                    await redirectToSignup();
                     return;
                 }
 
@@ -142,8 +158,7 @@ export const UserContextProvider = ({ children }) => {
                 });
             } catch (error) {
                 console.error("Failed to fetch user data:", error);
-                const settings = await getDesignVersion();
-                router.push(settings?.webapp_design === "tamagui-1.0" ? "/newSignUp" : `/signup`);
+                await redirectToSignup();
             } finally {
                 userFetchPromise.current = null;
             }

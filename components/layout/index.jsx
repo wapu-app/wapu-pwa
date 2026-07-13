@@ -91,13 +91,17 @@ export const Layout = ({ children }) => {
         if (Cookies.get("isLoggedIn") === "true" || !isAnAuthablePage(pathname)) {
             return;
         }
-        getDesignVersion().then((settings) => {
-            router.push(
+        getDesignVersion()
+            .then((settings) =>
                 settings?.webapp_design === "tamagui-1.0"
                     ? "/newSignUp"
                     : "/signup"
-            );
-        });
+            )
+            // If /settings is unreachable (backend down, network, CORS) still send
+            // the logged-out visitor to sign-up instead of leaving them on a hung
+            // page with no login. /signup itself redirects to /newSignUp.
+            .catch(() => "/signup")
+            .then((destination) => router.push(destination));
     }, [authToken, pathname]);
 
     const checkBetaVersion = async () => {
@@ -234,7 +238,7 @@ export const Layout = ({ children }) => {
                 {navHidden ? (
                     <HiddenNavigation />
                 ) : (
-                    <>{newDesign ? <NewNavigation /> : <Navigation />} </>
+                    <>{newDesign ? <NewNavigation /> : <Navigation />}</>
                 )}
             </CustomMain>
         </PrincipalContainer>
