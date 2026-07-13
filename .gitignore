@@ -25,6 +25,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# Auto generated build info (scripts/generate-version.js)
+/public/version.json
+
 # Auto generated PWA files
 /public/sw.js
 /public/sw.js.map
