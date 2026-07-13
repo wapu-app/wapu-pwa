@@ -7,6 +7,8 @@ then
   exit 1;
 fi
 
+mkdir -p config/environment/current
+
 if [ $1 = 'local' ]
 then
     echo "Setting environment to 'local'..."
