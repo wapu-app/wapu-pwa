@@ -8,7 +8,14 @@ function isJWTExpired({ token }) {
         return true;
     }
 
-    const decodedToken = jwtDecode(token);
+    // Malformed token -> treat as expired so refresh runs instead of crashing.
+    let decodedToken;
+    try {
+        decodedToken = jwtDecode(token);
+    } catch {
+        return true;
+    }
+
     const currentTime = Date.now() / 1000;
 
     if (decodedToken.exp > currentTime) {
@@ -22,33 +29,61 @@ export const isAuthExpired = () => {
     return isJWTExpired({ token: token });
 };
 
+// Shared across all concurrent callers so a burst of API calls hitting an
+// expired token triggers a single /users/refresh instead of one per request.
+let refreshPromise = null;
+
+const refreshAccessToken = async () => {
+    const secure = window.location.protocol === "https:";
+    let response;
+    try {
+        response = await fetch(CONFIG.API.BASE_URL + "/users/refresh", {
+            credentials: "include",
+            method: "GET",
+        });
+    } catch {
+        // Network failure: return null so apiRequest returns 401 to callers.
+        return null;
+    }
+
+    let data;
+    try {
+        data = await response.json();
+    } catch {
+        return null;
+    }
+
+    if (response.status === 200 && data && data.access_token) {
+        Cookies.set("access_token", data.access_token, {
+            path: "/",
+            sameSite: "strict",
+            secure: secure,
+            expires: 1,
+        });
+        return data.access_token;
+    }
+
+    Cookies.set("isLoggedIn", false, {
+        path: "/",
+        sameSite: "strict",
+        secure: secure,
+        expires: 1,
+    });
+    Cookies.remove("access_token");
+    return null;
+};
+
 export const getAccessToken = async () => {
     const token = Cookies.get("access_token");
 
     if (!isJWTExpired({ token: token })) {
         return token;
-    } else {
-        const response = await fetch(CONFIG.API.BASE_URL + "/users/refresh", {
-            credentials: "include",
-            method: "GET",
-        });
-
-        const data = await response.json();
-
-        if (response.status == 200) {
-            Cookies.set("access_token", data.access_token, {
-                path: "/",
-                sameSite: "strict",
-                expires: 1,
-            });
-            return data.access_token;
-        } else {
-            Cookies.set("isLoggedIn", false, {
-                path: "/",
-                sameSite: "strict",
-                expires: 1,
-            });
-            Cookies.remove("access_token");
-        }
     }
+
+    if (!refreshPromise) {
+        refreshPromise = refreshAccessToken().finally(() => {
+            refreshPromise = null;
+        });
+    }
+    return refreshPromise;
 };

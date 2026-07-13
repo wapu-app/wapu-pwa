@@ -151,6 +151,7 @@ export default function index() {
                 const response = await loginWithTempPassword(tempPassword);
                 if (response.status === 400 || response.status === 404) {
                     setErrorMessage(response?.data?.error);
+                    return;
                 }
                 Cookies.set("access_token", response.data.access_token, {
                     path: "/",
@@ -220,7 +221,7 @@ export default function index() {
                                 />
                                 <TamaguiButton
                                     text={"Need Help?"}
-                                    href={"https://wapupay.com/help/"}
+                                    href={"https://wapupay.com/#ayuda"}
                                     target={"_blank"}
                                     terciary
                                 />
@@ -259,18 +260,6 @@ export default function index() {
                                             setIsPasswordFocused
                                         } /* to show TamaguiGuide */
                                     />
-                                    {/* REFERRAL OPTION */}
-                                    {false ? (
-                                        <TamaguiInput
-                                            placeholder={
-                                                "Enter your referral code"
-                                            }
-                                            value={referralCode}
-                                            onChange={setReferralCode}
-                                        />
-                                    ) : (
-                                        <></>
-                                    )}
                                     {/* GUIDE (FOR ERRORS AND INFO) */}
                                     {errorMessage || isPasswordFocused ? (
                                         <TamaguiGuide
@@ -445,7 +434,7 @@ export default function index() {
                         />
                         <TamaguiButton
                             text={"Need Help?"}
-                            href={"https://wapupay.com/help/"}
+                            href={"https://wapupay.com/#ayuda"}
                             target={"_blank"}
                             terciary
                         />
