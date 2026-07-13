@@ -254,7 +254,7 @@ const QRPhoto = () => {
         content2: "2- Enter the payment amount.",
         content3:
             "Note: Some merchants only accept ALIAS transfers. In that case, select 'SEND' from the main menu.",
-        href: "https://wapupay.com/help/",
+        href: "https://wapupay.com/#ayuda",
         text_button: "More info",
         target: "_blank",
     };

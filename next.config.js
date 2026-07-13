@@ -49,13 +49,15 @@ const nextConfig = {
             },
             {
                 source: "/unregisteredUsers",
-                destination: "/signup",
+                destination: "/newSignUp",
+                permanent: true,
+            },
+            {
+                source: "/signup",
+                destination: "/newSignUp",
                 permanent: true,
             },
         ];
-    },
-    sassOptions: {
-        includePaths: [path.join(__dirname, "styles")],
     },
 };
 const withPWA = require("next-pwa")({

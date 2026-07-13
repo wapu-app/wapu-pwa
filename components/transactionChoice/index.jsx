@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useRouter } from "next/router";
+import Cookies from "js-cookie";
 import { useUserContext } from "../../context/userContext";
 import ArrowRight from "../../public/icons/chevron_right_white_24dp.svg";
 import Forward from "../../public/icons/arrow_forward_white_24dp.svg";
@@ -23,7 +24,9 @@ export const TransactionChoiceModal = ({ isOpen, close }) => {
     const { user, getUser } = useUserContext();
 
     useEffect(() => {
-        getUser();
+        if (Cookies.get("isLoggedIn") === "true") {
+            getUser();
+        }
     }, []);
 
     const router = useRouter();
