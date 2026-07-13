@@ -9,7 +9,7 @@ frontend:
         - npm ci
     build:
       commands:
-        - npm run env:stg
+        - npm run env:prod
         - npm run build
   artifacts:
     baseDirectory: .next
