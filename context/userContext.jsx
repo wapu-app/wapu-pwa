@@ -1,5 +1,5 @@
 "use client";
-import { useContext, createContext, useState, useEffect } from "react";
+import { useContext, createContext, useState, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { isAnAuthablePage } from "../utils/validations";
 import { fetchUserData, getSettings } from "../api/api";
@@ -27,13 +27,39 @@ export const UserContextProvider = ({ children }) => {
         const settings = await getSettings();
         return settings;
     };
-    const getUser = async () => {
-        const settings = await getDesignVersion();
-        if (isAnAuthablePage(pathname)) {
+
+    // Route an unauthenticated visitor to the right sign-up screen. A failing
+    // /settings fetch (backend down, network, CORS) must never block the
+    // redirect: default to /signup (which itself redirects to /newSignUp) so the
+    // app degrades gracefully instead of hanging on a blank page.
+    const redirectToSignup = async () => {
+        let destination = "/signup";
+        try {
+            const settings = await getDesignVersion();
+            if (settings?.webapp_design === "tamagui-1.0") {
+                destination = "/newSignUp";
+            }
+        } catch (error) {
+            // keep the /signup default
+        }
+        router.push(destination);
+    };
+    const userFetchPromise = useRef(null);
+
+    const getUser = () => {
+        if (!isAnAuthablePage(pathname)) {
+            return Promise.resolve();
+        }
+        // Coalesce concurrent getUser() calls (multiple mount effects fire it in
+        // the same render burst) into a single /users/home fetch.
+        if (userFetchPromise.current) {
+            return userFetchPromise.current;
+        }
+        const promise = (async () => {
             try {
                 const userData = await fetchUserData();
-                if (userData.data.error == "Invalid token") {
-                    router.push(settings.webapp_design === "tamagui-1.0" ? "/newSignUp" : `/signup`);
+                if (userData.status === 401 || userData.status === 422) {
+                    await redirectToSignup();
                     return;
                 }
 
@@ -91,6 +117,7 @@ export const UserContextProvider = ({ children }) => {
                     rateUsdtArsBuy: usdtArsBuy,
                     rateUsdtBrlSell: usdtBrlSell,
                     rateBtcUsdBuy: btcUsdBuy,
+                    rates: userData.data.rates || [],
                     isAdmin: userData.data.is_admin,
                     kycStatus: userData.data.kyc_status,
                     kycTier: userData.data.kyc_tier,
@@ -123,18 +150,22 @@ export const UserContextProvider = ({ children }) => {
                     showRecentFavContacts: userData.data.settings
                         ? userData.data.settings.features.show_recent_fav_contacts
                         : false,
+                    mandatoryAliasValidation: userData.data.settings
+                        ? userData.data.settings.features.mandatory_alias_validation
+                        : false,
                     userDomain: userData.data.username,
                     betaVersion: userData.data.beta_version,
                 });
             } catch (error) {
                 console.error("Failed to fetch user data:", error);
-                router.push(settings.webapp_design === "tamagui-1.0" ? "/newSignUp" : `/signup`);
+                await redirectToSignup();
+            } finally {
+                userFetchPromise.current = null;
             }
-        }
+        })();
+        userFetchPromise.current = promise;
+        return promise;
     };
-    useEffect(() => {
-        getDesignVersion();
-    }, []);
     return (
         <>
             <UserContext.Provider

@@ -1,30 +1,27 @@
 import Cookies from "js-cookie";
-import CONFIG from "../config/environment/current";
-import { getSettings } from "../api/api";
+import { getSettings, logoutUser } from "../api/api";
 
 const getDesignVersion = async () => {
     const settings = await getSettings();
     return settings;
 };
 export default async function userLogout() {
-    const settings = await getDesignVersion();
+    const settings = await getDesignVersion().catch(() => null);
     try {
-        const res = await fetch(CONFIG.API.BASE_URL + "/users/logout", {
-            method: "POST",
-        });
-
-        if (res.status === 200) {
-            Cookies.set("isLoggedIn", "false", {
-                path: "/",
-                sameSite: "strict",
-            });
-            window.location.replace(
-                settings.webapp_design === "tamagui-1.0" ? "/newSignUp" : "/signup"
-            );
-        } else {
-            console.error("Failed to log out. Status:", res.status);
-        }
+        await logoutUser();
     } catch (error) {
         console.error("Error during logout:", error);
+    } finally {
+        // Clear the local session regardless of the network result so logout
+        // always works (e.g. offline) and the client "logged in" flag can't
+        // outlive the request.
+        Cookies.set("isLoggedIn", "false", {
+            path: "/",
+            sameSite: "strict",
+        });
+        Cookies.remove("access_token");
+        window.location.replace(
+            settings?.webapp_design === "tamagui-1.0" ? "/newSignUp" : "/signup"
+        );
     }
 }

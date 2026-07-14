@@ -129,7 +129,7 @@ export const Navbar = () => {
                         </CustomLink>
                     </NavbarButton>
                 ) : (
-                    ""
+                    null
                 )}
                 <NavbarButton
                     onClick={() => {
@@ -239,7 +239,7 @@ export const Navbar = () => {
                 <NavbarButton>
                     <CustomIcon width={20} height={20} src={Help} alt="Help" />
                     <CustomLink
-                        href={"https://wapupay.com/help/"}
+                        href={"https://wapupay.com/#ayuda"}
                         onClick={() => setIsOpen(false)}
                         target="_blank"
                     >

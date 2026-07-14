@@ -14,6 +14,7 @@ import { useRouter } from "next/router";
 import { getSettings } from "../../api/api";
 import NewInfoCard from "../../components/NewInfoCard/NewInfoCard";
 import ExchangeRateCard from "../../components/ExchangeRateCard/ExchangeRateCard";
+import ExchangeRateCalculatorModal from "../../components/ExchangeRateCalculatorModal";
 
 export default function index() {
     const router = useRouter();
@@ -26,6 +27,8 @@ export default function index() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const openModal = () => setIsModalOpen(true);
     const closeModal = () => setIsModalOpen(false);
+
+    const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
 
     const handleQRPay = () => {
         router.push("/qrPayment");
@@ -66,6 +69,10 @@ export default function index() {
         >
             <NewInfoCard />
             <TamaguiSendModal isOpen={isModalOpen} onClose={closeModal} />
+            <ExchangeRateCalculatorModal
+                isOpen={isCalculatorOpen}
+                onClose={() => setIsCalculatorOpen(false)}
+            />
             <Referral isOpen={isReferralOpen} setIsOpen={setIsReferralOpen} />
 
             <XStack
@@ -166,10 +173,10 @@ export default function index() {
                     />
                 </YStack>
             ) : (
-                ""
+                null
             )}
 
-            <ExchangeRateCard />
+            <ExchangeRateCard onPress={() => setIsCalculatorOpen(true)} />
         </YStack>
     );
 }

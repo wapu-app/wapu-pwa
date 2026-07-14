@@ -24,7 +24,7 @@ export default function TamaguiCheckbox({
                 {...checkboxProps}
             >
                 <Checkbox.Indicator>
-                    {value ? <Image src={check} alt="icon" /> : ""}
+                    {value ? <Image src={check} alt="icon" /> : null}
                 </Checkbox.Indicator>
             </Checkbox>
 

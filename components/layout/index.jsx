@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Header } from "../Header";
 import { Navigation } from "../Navigation";
 import { TransactionChoiceModal } from "../transactionChoice";
@@ -47,6 +47,13 @@ export const Layout = ({ children }) => {
     } = useUserContext();
     const router = useRouter();
 
+    // The auth-check interval is created once (below) and must read the live
+    // pathname, so mirror it into a ref instead of recreating the interval on
+    // every navigation.
+    const pathnameRef = useRef(pathname);
+    pathnameRef.current = pathname;
+    const checkAuthIntervalRef = useRef(null);
+
     const showNav = [
         "/oldHome",
         "/home",
@@ -79,17 +86,22 @@ export const Layout = ({ children }) => {
     };
 
     useEffect(() => {
-        getDesignVersion().then((settings) => {
-            if (Cookies.get("isLoggedIn") !== "true") {
-                if (isAnAuthablePage(pathname)) {
-                    router.push(
-                        settings.webapp_design === "tamagui-1.0"
-                            ? "/newSignUp"
-                            : "/signup"
-                    );
-                }
-            }
-        });
+        // Settings are only needed to pick the sign-up redirect for logged-out
+        // visitors on an authable page; skip the fetch entirely otherwise.
+        if (Cookies.get("isLoggedIn") === "true" || !isAnAuthablePage(pathname)) {
+            return;
+        }
+        getDesignVersion()
+            .then((settings) =>
+                settings?.webapp_design === "tamagui-1.0"
+                    ? "/newSignUp"
+                    : "/signup"
+            )
+            // If /settings is unreachable (backend down, network, CORS) still send
+            // the logged-out visitor to sign-up instead of leaving them on a hung
+            // page with no login. /signup itself redirects to /newSignUp.
+            .catch(() => "/signup")
+            .then((destination) => router.push(destination));
     }, [authToken, pathname]);
 
     const checkBetaVersion = async () => {
@@ -111,20 +123,35 @@ export const Layout = ({ children }) => {
         setNavHidden(!showNav.includes(pathname));
         setLogoHidden(!showLogo.includes(pathname));
         setNewDesign(pathname !== "/oldHome");
+    }, [pathname]);
 
+    useEffect(() => {
         const checkAuth = async () => {
-            if (isAnAuthablePage(pathname)) {
-                if (isAuthExpired()) {
-                    getAccessToken();
-                    setAuthToken(Cookies.get("isLoggedIn"));
+            // Anonymous visitors have no session to refresh; skip so we don't
+            // poll /users/refresh every few seconds for logged-out users.
+            if (Cookies.get("isLoggedIn") !== "true") {
+                return;
+            }
+            if (isAnAuthablePage(pathnameRef.current) && isAuthExpired()) {
+                const token = await getAccessToken();
+                if (!token) {
+                    // Refresh failed mid-session: a returning user has an
+                    // account, so send them to login rather than sign-up.
+                    router.replace("/login");
+                    return;
                 }
+                setAuthToken(Cookies.get("isLoggedIn"));
             }
         };
-        const intervalId = setInterval(checkAuth, CHECK_AUTH_TOKEN_INTERVAL);
+        checkAuthIntervalRef.current = setInterval(
+            checkAuth,
+            CHECK_AUTH_TOKEN_INTERVAL
+        );
         return () => {
-            clearInterval(intervalId); // Clear the interval when the component is unmounted
+            clearInterval(checkAuthIntervalRef.current);
         };
-    }, [pathname]);
+        // Created once on mount; reads the live pathname via pathnameRef.
+    }, []);
 
     const toAlternativeDepositChoice = () => {
         setHelpModalState(true);
@@ -211,7 +238,7 @@ export const Layout = ({ children }) => {
                 {navHidden ? (
                     <HiddenNavigation />
                 ) : (
-                    <>{newDesign ? <NewNavigation /> : <Navigation />} </>
+                    <>{newDesign ? <NewNavigation /> : <Navigation />}</>
                 )}
             </CustomMain>
         </PrincipalContainer>

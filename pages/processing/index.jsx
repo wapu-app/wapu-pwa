@@ -106,12 +106,12 @@ export default function ProcessingPage() {
                             text="Cancel"
                         />
                     ) : (
-                        ""
+                        null
                     )}
                     {transactionStatus.toLowerCase() === "canceled" ? (
                         <Button href={"/oldHome"} text="Home" />
                     ) : (
-                        ""
+                        null
                     )}
                 </ButtonContainer>
             </Container>

@@ -1,7 +1,40 @@
 import CONFIG from "../config/environment/current";
+import Cookies from "js-cookie";
 import { getAccessToken } from "../utils/auth";
+import { getOrFetch, invalidate } from "../utils/apiCache";
 
 const base_url = CONFIG.API.BASE_URL;
+
+const CACHE_KEY = {
+    SETTINGS: "settings",
+    TRANSACTIONS: "transactions",
+    COUNTRIES: "countries",
+    PROFILE: "profile",
+};
+
+const CACHE_TTL = {
+    // Fallback when the backend has no (or an invalid) webapp_settings_cache_ttl_minutes
+    SETTINGS_DEFAULT: 10 * 60 * 1000, // 10 minutes
+    SETTINGS_MAX: 24 * 60 * 60 * 1000, // cap against absurd admin input
+    TRANSACTIONS: 5 * 60 * 1000, // 5 minutes
+    COUNTRIES: 24 * 60 * 60 * 1000, // 24 hours
+    PROFILE: 60 * 60 * 1000, // 1 hour
+};
+
+const isOkStatus = (status) => status >= 200 && status < 300;
+
+// The settings cache TTL comes inside the /settings payload itself
+// (webapp_settings_cache_ttl_minutes, tunable at runtime by ops without a FE
+// deploy). The backend serves it as a raw string; tolerate an absent key
+// (backend not migrated yet), "", non-numeric or <= 0 values. A TTL change
+// only takes effect once the currently cached entry expires.
+const settingsTtlMs = (settings) => {
+    const minutes = Number(settings && settings.webapp_settings_cache_ttl_minutes);
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+        return CACHE_TTL.SETTINGS_DEFAULT;
+    }
+    return Math.min(minutes * 60 * 1000, CACHE_TTL.SETTINGS_MAX);
+};
 
 const dataURItoBlob = (dataURI) => {
     const byteString = atob(dataURI.split(",")[1]);
@@ -25,6 +58,11 @@ async function apiRequest({
     credentials = "same-origin" // default value
 }) {
     const accessToken = requiresAuth ? await getAccessToken() : null;
+    // Refresh failed / no session: don't fire "Authorization: Bearer undefined"
+    // at the network. Return a 401 in the same shape callers already handle.
+    if (requiresAuth && !accessToken) {
+        return { data: { error: "Session expired" }, status: 401 };
+    }
     let requestBody;
     if (body instanceof FormData) {
         requestBody = body;
@@ -73,6 +111,7 @@ export async function signupUser(email, password, referral) {
             referral_code: referral,
         },
         requiresAuth: false,
+        credentials: "include",
     });
 }
 
@@ -92,6 +131,24 @@ export async function loginWithTempPassword(tempPassword) {
         method: "POST",
         body: { temp_password: tempPassword },
         requiresAuth: false,
+        credentials: "include",
+    });
+}
+
+export async function logoutUser() {
+    // Send the current (possibly expired) token so the server can revoke it and,
+    // via credentials:"include", clear the HttpOnly refresh cookie. requiresAuth
+    // is false so an expired token doesn't short-circuit the logout request.
+    const accessToken = Cookies.get("access_token");
+    return await apiRequest({
+        endpoint: "/users/logout",
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+        },
+        requiresAuth: false,
+        credentials: "include",
     });
 }
 
@@ -118,7 +175,12 @@ export async function fetchUserData() {
 }
 
 export async function getProfile() {
-    return await apiRequest({ endpoint: "/users/profile" });
+    return getOrFetch(
+        CACHE_KEY.PROFILE,
+        CACHE_TTL.PROFILE,
+        () => apiRequest({ endpoint: "/users/profile" }),
+        { shouldCache: (res) => isOkStatus(res.status) }
+    );
 }
 
 export async function getVerifyCode(code) {
@@ -126,11 +188,15 @@ export async function getVerifyCode(code) {
 }
 
 export async function updateProfile(profileData) {
-    return await apiRequest({
+    const response = await apiRequest({
         endpoint: "/users/profile",
         method: "PATCH",
         body: profileData,
     });
+    if (isOkStatus(response.status)) {
+        invalidate(CACHE_KEY.PROFILE);
+    }
+    return response;
 }
 
 export async function sendRecoverPasswordEmail(recoveryEmail) {
@@ -138,6 +204,15 @@ export async function sendRecoverPasswordEmail(recoveryEmail) {
         endpoint: "/users/send-recovery-email",
         method: "POST",
         body: { email: recoveryEmail },
+        requiresAuth: false,
+    });
+}
+
+export async function resetPassword(verificationCode, password) {
+    return await apiRequest({
+        endpoint: "/users/password-recovery/" + verificationCode,
+        method: "POST",
+        body: { password },
         requiresAuth: false,
     });
 }
@@ -153,7 +228,12 @@ export async function checkUsernameAvailability(username) {
 }
 
 export async function getTransactions() {
-    return await apiRequest({ endpoint: "/transactions/my_transactions" });
+    return getOrFetch(
+        CACHE_KEY.TRANSACTIONS,
+        CACHE_TTL.TRANSACTIONS,
+        () => apiRequest({ endpoint: "/transactions/my_transactions" }),
+        { shouldCache: (res) => isOkStatus(res.status) }
+    );
 }
 
 export const getTransaction = async (trx_id) => {
@@ -173,7 +253,7 @@ export async function updateTransactionStatus(newStatus, trx_id) {
     const formData = new FormData();
     Object.keys(payload).forEach((key) => formData.append(key, payload[key]));
 
-    return await apiRequest({
+    const response = await apiRequest({
         endpoint: `/transactions/${trx_id}`,
         method: "PATCH",
         headers: {
@@ -181,6 +261,10 @@ export async function updateTransactionStatus(newStatus, trx_id) {
         },
         body: formData,
     });
+    if (isOkStatus(response.status)) {
+        invalidate(CACHE_KEY.TRANSACTIONS);
+    }
+    return response;
 }
 
 export async function sendVerificationEmail(email) {
@@ -200,36 +284,52 @@ export async function getReferralCode(email, phone) {
 }
 
 export async function postDeposit(payload) {
-    return await apiRequest({
+    const response = await apiRequest({
         endpoint: "/wallet/deposit",
         method: "POST",
         body: payload,
     });
+    if (isOkStatus(response.status)) {
+        invalidate(CACHE_KEY.TRANSACTIONS);
+    }
+    return response;
 }
 
 export async function postDepositLightning(payload) {
-    return await apiRequest({
+    const response = await apiRequest({
         endpoint: "/wallet/deposit_lightning",
         method: "POST",
         body: payload,
     });
+    if (isOkStatus(response.status)) {
+        invalidate(CACHE_KEY.TRANSACTIONS);
+    }
+    return response;
 }
 
 export async function postInnerTransfer(payload) {
     const formData = new FormData();
     Object.keys(payload).forEach((key) => formData.append(key, payload[key]));
-    return apiRequest({
+    const response = await apiRequest({
         endpoint: "/transactions/inner_transfer",
         method: "POST",
         body: formData,
     });
+    if (isOkStatus(response.status)) {
+        invalidate(CACHE_KEY.TRANSACTIONS);
+    }
+    return response;
 }
 export async function postWithdrawal(payload) {
-    return apiRequest({
+    const response = await apiRequest({
         endpoint: "/wallet/withdraw",
         method: "POST",
         body: payload,
     });
+    if (isOkStatus(response.status)) {
+        invalidate(CACHE_KEY.TRANSACTIONS);
+    }
+    return response;
 }
 
 export async function uploadKycFrontPhoto(imgSrc) {
@@ -284,7 +384,12 @@ export async function getUserData() {
 }
 
 export async function getCountries() {
-    return await apiRequest({ endpoint: "/countries" });
+    return getOrFetch(
+        CACHE_KEY.COUNTRIES,
+        CACHE_TTL.COUNTRIES,
+        () => apiRequest({ endpoint: "/countries" }),
+        { shouldCache: (res) => isOkStatus(res.status) }
+    );
 }
 
 export function getVersion() {
@@ -342,18 +447,29 @@ export async function sendPix(payload) {
         body: formData,
     });
 
+    if (isOkStatus(status)) {
+        invalidate(CACHE_KEY.TRANSACTIONS);
+    }
+
     return { data, status };
 }
 
 export async function getSettings() {
-    const { data } = await apiRequest({
-        endpoint: "/settings",
-        requiresAuth: false,
-    });
-    if (data && data.settings) {
-        const settings = data.settings;
-        return settings;
-    }
+    return getOrFetch(
+        CACHE_KEY.SETTINGS,
+        settingsTtlMs,
+        async () => {
+            const { data } = await apiRequest({
+                endpoint: "/settings",
+                requiresAuth: false,
+            });
+            if (data && data.settings) {
+                return data.settings;
+            }
+            return undefined;
+        },
+        { persist: true, shouldCache: (settings) => Boolean(settings) }
+    );
 }
 
 export async function sendFiat(payload) {
@@ -368,6 +484,10 @@ export async function sendFiat(payload) {
         },
         body: formData,
     });
+
+    if (isOkStatus(status)) {
+        invalidate(CACHE_KEY.TRANSACTIONS);
+    }
 
     return { data, status };
 }
@@ -392,6 +512,26 @@ export async function toggleContactFavorite(contactId, isFavorite) {
 export async function deleteContact(contactId) {
     return await apiRequest({
         endpoint: `/contacts/${contactId}`,
+        method: "DELETE",
+    });
+}
+
+export async function getApiTokenStatus() {
+    return await apiRequest({
+        endpoint: "/users/api-token/status",
+    });
+}
+
+export async function generateApiToken() {
+    return await apiRequest({
+        endpoint: "/users/api-token",
+        method: "POST",
+    });
+}
+
+export async function revokeApiToken() {
+    return await apiRequest({
+        endpoint: "/users/api-token",
         method: "DELETE",
     });
 }

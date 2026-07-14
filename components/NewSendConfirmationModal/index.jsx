@@ -14,7 +14,14 @@ const NewSendConfirmationModal = ({
     exchangeRate,
     totalAmount,
     onConfirm,
+    aliasValidationRequired,
+    validCbuAlias,
 }) => {
+    // When the mandatory_alias_validation feature is on we only let the user confirm once the
+    // backend has resolved the destination as a real account (valid_cbu_alias === true). While
+    // the tentative-amount response is still loading validCbuAlias is undefined, so the button
+    // stays disabled until we know. With the flag off the button behaves exactly as before.
+    const isConfirmDisabled = aliasValidationRequired && validCbuAlias !== true;
     return (
         <YStack
             flex={1}
@@ -193,6 +200,35 @@ const NewSendConfirmationModal = ({
                                         : receiverAccount ||
                                           "CBU, Alias or Wallet"}
                                 </Paragraph>
+                                {aliasValidationRequired &&
+                                    (validCbuAlias === true ? (
+                                        <Paragraph
+                                            color="$semanticGreen"
+                                            weight={"$2"}
+                                            size={"$3"}
+                                            textAlign="left"
+                                        >
+                                            ✓ Valid ALIAS/CBU
+                                        </Paragraph>
+                                    ) : validCbuAlias === false ? (
+                                        <Paragraph
+                                            color="$semanticRed"
+                                            weight={"$2"}
+                                            size={"$3"}
+                                            textAlign="left"
+                                        >
+                                            ✕ Invalid ALIAS/CBU
+                                        </Paragraph>
+                                    ) : (
+                                        <Paragraph
+                                            color="$neutral10"
+                                            weight={"$2"}
+                                            size={"$3"}
+                                            textAlign="left"
+                                        >
+                                            Validating ALIAS/CBU…
+                                        </Paragraph>
+                                    ))}
                             </YStack>
                         </XStack>
                     </YStack>
@@ -208,7 +244,11 @@ const NewSendConfirmationModal = ({
             >
                 The money will be taken from your USDT account
             </Paragraph>
-            <TamaguiButton onClick={onConfirm} text={"Confirm"} />
+            <TamaguiButton
+                onClick={onConfirm}
+                text={"Confirm"}
+                isDisabled={isConfirmDisabled}
+            />
         </YStack>
     );
 };

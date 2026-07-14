@@ -1,37 +1,17 @@
-import Login from "../../components/login/login";
-import LoginByMagicLink from "../../components/loginMagicLink";
-import SignUp from "../../components/SignUp/signup";
-import { Wrapper } from "./styled";
 import { useRouter } from "next/router";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 
-export function unregisteredUsers() {
+// /signup is deprecated. Redirect to /newSignUp preserving query params
+// (ref, tempPassword, etc.) so referral links and magic-link flows still work.
+// next.config.js already handles server-side redirects, but this catches
+// client-side navigations (router.push/Link) that bypass config redirects.
+export default function SignupRedirect() {
     const router = useRouter();
-    const [referralCode, setReferralCode] = useState(null);
-    const [tempPass, setTempPass] = useState(null);
-    const [isSignUpOpen, setIsSignUpOpen] = useState(false);
 
     useEffect(() => {
-        if (router.asPath !== router.route) {
-            setReferralCode(router.query.ref);
-            setTempPass(router.query.tempPassword);
-            if (router.query.ref) {
-                setIsSignUpOpen(true);
-            }
-        }
-    }, [router]);
+        if (!router.isReady) return;
+        router.replace({ pathname: "/newSignUp", query: router.query });
+    }, [router.isReady, router]);
 
-    return (
-        <Wrapper>
-            <SignUp
-                isOpen={isSignUpOpen}
-                setIsOpen={setIsSignUpOpen}
-                referralCode={referralCode}
-            />
-            <Login />
-            <LoginByMagicLink tempPass={tempPass} />
-        </Wrapper>
-    );
+    return null;
 }
-
-export default unregisteredUsers;

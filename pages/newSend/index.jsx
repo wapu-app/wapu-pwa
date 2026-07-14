@@ -84,6 +84,9 @@ export default function index() {
                 currency_payment: currencyPayment,
                 currency_taken: currencyTaken,
                 type: transactionType,
+                // Sent so the backend can resolve valid_cbu_alias when mandatory_alias_validation
+                // is on. Harmless when the flag is off (the backend just won't look it up).
+                alias: receiverAccount,
             };
 
             const { data } = await getTransactionTentativeAmount(payload);
@@ -186,7 +189,8 @@ export default function index() {
             let result = Math.floor(
                 // We are hardcoding to keep 0.01% to make the MAX work up to $1000 usd
                 (user.usdtBalance - user.usdtBalance * 0.01) *
-                    (1 - fee / 100) *
+                    // fee is already a fraction (0.05 = 5%), same as send/index.jsx
+                    (1 - fee) *
                     user.rateUsdtArsBuy
             );
 
@@ -470,6 +474,8 @@ export default function index() {
                     exchangeRate={tentativeTransactionDetails?.exchange_rate}
                     totalAmount={tentativeTransactionDetails?.total_amount}
                     onConfirm={handleConfirm}
+                    aliasValidationRequired={user.mandatoryAliasValidation}
+                    validCbuAlias={tentativeTransactionDetails?.valid_cbu_alias}
                 />
             )}
         </YStack>

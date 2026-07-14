@@ -207,7 +207,7 @@ export const Principal = () => {
                     <RateText>${user?.rateUsdtArsBuy} ARS</RateText>
                 </RateValues>
             </RateWrapper>
-            {user.pwaPopUp ? <AddToHomeScreen /> : ""}
+            {user.pwaPopUp ? <AddToHomeScreen /> : null}
             <Referral isOpen={isReferralOpen} setIsOpen={setIsReferralOpen} />
         </Container>
     );
