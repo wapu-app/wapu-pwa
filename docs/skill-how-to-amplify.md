@@ -94,6 +94,54 @@ Por eso, al cambiar de un repo monorepo a uno flat hay que **reescribir el build
 (o alinearlo con el `amplify.yml` del repo nuevo) — no alcanza con cambiar el repo, y ni
 siquiera alcanza con el buildSpec inline si el repo tiene su propio `amplify.yml` en esa rama.
 
+### La solución recomendada: `amplify.yml` dinámico por `AWS_BRANCH`
+
+Dado que el `amplify.yml` del repo es lo que realmente manda (warning de arriba), la forma
+correcta de evitar que `main` y `develop` necesiten contenidos **distintos** (y por lo tanto
+diverjan en cada release, con el riesgo de que un merge pise el fix de prod) es tener **un solo
+`amplify.yml`, idéntico en todas las ramas**, que elija el ambiente en tiempo de build usando
+`AWS_BRANCH` (env var que Amplify inyecta solo, con el nombre de la rama que está buildeando).
+Patrón tomado del repo hermano/legacy `wapu-app/survivors`, adaptado a la topología real de
+`wapu-pwa` (¡ojo, el mapeo de `survivors` no sirve tal cual — ver más abajo!):
+
+```yaml
+    build:
+      commands:
+        - |
+          echo "Selecting frontend environment for AWS_BRANCH=${AWS_BRANCH:-unknown}"
+          case "${AWS_BRANCH:-}" in
+            main|prod|production)
+              npm run env:prod
+              ;;
+            develop|staging)
+              npm run env:stg
+              ;;
+            qa)
+              npm run env:qa
+              ;;
+            *)
+              echo "Unknown AWS_BRANCH='${AWS_BRANCH:-}'. Falling back to qa (non-prod)."
+              npm run env:qa
+              ;;
+          esac
+        - npm run build
+```
+
+- **El mapeo de `wapu-pwa` NO es el de `survivors`.** `survivors` mapea `develop|qa → env:qa`.
+  En `wapu-pwa`, `develop` alimenta `staging.wapu.app` (necesita `env:stg`), no QA. Copiar el
+  mapeo de `survivors` literal rompe staging (sirve contra `be-qa.wapu.app` en vez de
+  `be-stage.wapu.app`) — de hecho ya pasó: la rama `dinamic-deploy` (PR #1, mayo 2026, cerrado
+  sin mergear) tenía exactamente ese bug. Se corrigió y se reabrió como PR #7 contra `develop`.
+- El fallback (rama no reconocida) **nunca** debe ser prod — usar `env:qa` como default seguro.
+- El arm `main|prod|production` queda documentado en el archivo para cuando se decida llevar
+  este mismo fix a `main` — **eso es una acción separada y explícita, no algo que se hace de
+  arrastre** al arreglar `develop`. Ver el gotcha de alcance en §7.
+
+**Estado (julio 2026):** aplicado a `develop` vía PR #7 (verificar estado actual con
+`gh pr view 7 --repo wapu-app/wapu-pwa`). `main` sigue con el `amplify.yml` de emergencia
+(`env:prod` hardcodeado sin `case`, del incidente de repoint de prod) — a propósito, hasta
+validar el mecanismo dinámico en staging y que alguien pida explícitamente extenderlo a `main`.
+
 ---
 
 ## 3. Repointear una app a OTRO repo (operación destructiva)
@@ -306,6 +354,13 @@ curl -s -o /dev/null -w "status=%{http_code}\n" -L --max-time 25 https://<domain
   bash multilínea (`Unknown options: --profile ... --region ...`, como si todo el valor de la
   variable se pasara como un solo argumento). Si un comando falla así, no insistas con la
   variable: **poné los flags inline** en cada invocación de `aws`.
+- **No arrastrar `main`/prod a un fix pensado para `develop`/staging, aunque sea "el mismo
+  cambio".** Al armar el fix de `amplify.yml` dinámico (§2), el plan original proponía abrir PR
+  a `develop` y a `main` en la misma pasada, ya que el archivo final iba a ser idéntico. El
+  usuario lo frenó explícitamente: probarlo primero en `develop`/staging, y tocar `main` es una
+  acción **separada y a pedido explícito**, nunca de arrastre — aunque técnicamente sea "lo
+  mismo" y elimine divergencia a futuro. Por default, alcance cualquier fix de infra a la rama
+  de menor riesgo primero.
 
 ---
 
