@@ -16,6 +16,8 @@ import CopyIcon from "../../public/copy_icon.svg";
 import {postDeposit, postDepositLightning} from "../../api/api";
 
 import { useUserContext } from "../../context/userContext";
+import TamaguiNumpad from "../../components/TamaguiNumpad";
+import useAmountNumpad from "../../hooks/useAmountNumpad";
 import useTransactionStatus from "../../utils/useTransactionStatus";
 
 const LIGHTNING_INVOICE_FALLBACK_TTL_MS = 15 * 60 * 1000; // used only if the backend timestamps are missing/invalid
@@ -33,6 +35,7 @@ function getLightningInvoiceTtlMs(createdAt, expiresAt) {
 }
 
 export default function BitcoinDeposit() {
+    const { numpadAvailable, numpadActive, toggleNumpad } = useAmountNumpad();
     const router = useRouter();
     const { getUser, user } = useUserContext();
     const [step, setStep] = useState(1);
@@ -212,7 +215,17 @@ export default function BitcoinDeposit() {
                         placeholder="Enter amount in Satoshis"
                         keyboardType="numeric"
                         error={amountError}
+                        inputMode={numpadActive ? "none" : undefined}
                     />Equivalent in USD: ${satoshisToDollars(amount, user.rateBtcUsdBuy)}
+                    {numpadAvailable && (
+                        <TamaguiNumpad
+                            value={amount}
+                            onChange={handleAmountChange}
+                            enabled={numpadActive}
+                            onToggle={toggleNumpad}
+                            allowDecimal={false}
+                        />
+                    )}
                     <YStack
                         backgroundColor={"$neutral3"}
                         padding={"$4"}
