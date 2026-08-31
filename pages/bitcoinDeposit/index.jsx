@@ -40,7 +40,7 @@ const DEFAULT_UNIT = "ARS";
 // SAT is an integer unit, so it gets its own gate; ARS/USD reuse the shared
 // 2-decimal validator. This also closes the desktop path, where there is no
 // numpad and TamaguiNumpad's allowDecimal cannot help.
-const isValidForUnit = (value, unit) =>
+const isEditableForUnit = (value, unit) =>
     unit === "SAT" ? /^\d*$/.test(value) : isValidAmount(value);
 
 // Renders a converted amount back into an editable string for `unit`.
@@ -51,6 +51,21 @@ const formatForUnit = (converted, unit) => {
         return String(converted.sat);
     }
     return formatAmount(unit === "ARS" ? converted.ars : converted.usdt);
+};
+
+const computeAmountError = (value, unit, rates, minDepositAmount) => {
+    if (!value) {
+        return false;
+    }
+    if (unit === "SAT" && !/^[1-9]\d*$/.test(value)) {
+        return true;
+    }
+    const converted = convertAmount(value, unit, rates);
+    if (!converted) {
+        return Array.isArray(rates) && rates.length > 0;
+    }
+    const minUsd = parseFloat(minDepositAmount);
+    return Number.isFinite(minUsd) && converted.usdt < minUsd;
 };
 
 // Time-to-live of a Lightning invoice, derived from the backend's own window
@@ -93,32 +108,22 @@ export default function BitcoinDeposit() {
         setShowAbortButton
     );
 
-    const ratesReady = Array.isArray(user.rates) && user.rates.length > 0;
-
-    // The minimum is denominated in USD, so every unit is checked through the
-    // converted USD figure. An amount that will not convert is an error too —
-    // otherwise Next goes dead with no visible reason. But only once the rates
-    // are in: while getUser() resolves nothing converts yet, and that is not
-    // the user's fault. It also keeps a SAT deposit working without rates,
-    // exactly as this screen did before the unit selector existed.
-    const computeAmountError = (value, unit) => {
-        if (!value) {
-            return false;
-        }
-        const converted = convertAmount(value, unit, user.rates);
-        if (!converted) {
-            return ratesReady;
-        }
-        const minUsd = parseFloat(minDepositAmount);
-        return Number.isFinite(minUsd) && converted.usdt < minUsd;
-    };
+    useEffect(() => {
+        setAmountError(
+            computeAmountError(
+                amount,
+                currency,
+                user.rates,
+                minDepositAmount
+            )
+        );
+    }, [amount, currency, user.rates, minDepositAmount]);
 
     const handleAmountChange = (value) => {
-        if (!isValidForUnit(value, currency)) {
+        if (!isEditableForUnit(value, currency)) {
             return;
         }
         setAmount(value);
-        setAmountError(computeAmountError(value, currency));
     };
 
     // The picked unit drives the input from here on. The typed amount is
@@ -134,7 +139,6 @@ export default function BitcoinDeposit() {
         const nextAmount = converted ? formatForUnit(converted, next) : "";
         setCurrency(next);
         setAmount(nextAmount);
-        setAmountError(computeAmountError(nextAmount, next));
     };
 
     const handleIconPressed = () => {
