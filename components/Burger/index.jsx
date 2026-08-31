@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMediaQuery } from "@react-hook/media-query";
 import { Dialog, ScrollView, Text, YStack } from "tamagui";
 
 import Profile from "../../public/icons/profile_white.svg";
@@ -23,6 +22,7 @@ import Referral from "../Referral/referral";
 import { sendVerificationEmail, getSettings } from "../../api/api";
 import ErrorModal from "../ErrorModal";
 import { useUserContext } from "../../context/userContext";
+import { MobileTrigger } from "./styled";
 
 function Burger({ newDesign = false, close = null, externalIsOpen = null }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -31,10 +31,6 @@ function Burger({ newDesign = false, close = null, externalIsOpen = null }) {
     const [feedbackUrl, setFeedbackUrl] = useState("");
     const router = useRouter();
     const { user, getUser } = useUserContext();
-    // Mirrors the original BurgerContainer media query: the self-toggle
-    // trigger only shows on narrow viewports (Navbar covers desktop).
-    const isMobile = useMediaQuery("(max-width: 1023px)");
-
     const handleCloseModal = () => {
         setIsOpen(false);
         if (close) {
@@ -97,11 +93,13 @@ function Burger({ newDesign = false, close = null, externalIsOpen = null }) {
 
     return (
         <>
-            {!newDesign && isMobile && (
-                <TamaguiIconButton
-                    icon={menuIcon}
-                    onClick={() => setIsOpen(true)}
-                />
+            {!newDesign && (
+                <MobileTrigger data-mobile-trigger>
+                    <TamaguiIconButton
+                        icon={menuIcon}
+                        onClick={() => setIsOpen(true)}
+                    />
+                </MobileTrigger>
             )}
 
             <Dialog

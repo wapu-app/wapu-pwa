@@ -21,6 +21,8 @@ import TamaguiInput from "../../components/TamaguiInput";
 import TamaguiButton from "../../components/TamaguiButton";
 import NewHeaderButton from "../../components/newHeaderButton";
 import NewSendConfirmationModal from "../../components/NewSendConfirmationModal";
+import TamaguiNumpad from "../../components/TamaguiNumpad";
+import useAmountNumpad from "../../hooks/useAmountNumpad";
 import {
     getSettings,
     sendFiat,
@@ -30,6 +32,7 @@ import {
 export default function index() {
     const router = useRouter();
     const { user } = useUserContext();
+    const { numpadAvailable, numpadActive, toggleNumpad } = useAmountNumpad();
     const [step, setStep] = useState(1);
     const [mode, setMode] = useState("");
     const [amount, setAmount] = useState("");
@@ -404,6 +407,9 @@ export default function index() {
                                     placeholder="Enter Amount"
                                     error={!!errorMessage}
                                     keyboardType="decimal-pad"
+                                    inputMode={
+                                        numpadActive ? "none" : undefined
+                                    }
                                 />
                                 <Text
                                     position="absolute"
@@ -420,6 +426,14 @@ export default function index() {
                                     </button>
                                 </Text>
                             </XStack>
+                            {numpadAvailable && (
+                                <TamaguiNumpad
+                                    value={amount}
+                                    onChange={handleAmountChange}
+                                    enabled={numpadActive}
+                                    onToggle={toggleNumpad}
+                                />
+                            )}
                             {errorMessage || amount === "" || amount === "0" ? (
                                 <XStack {...messageXStackProps}>
                                     <Image

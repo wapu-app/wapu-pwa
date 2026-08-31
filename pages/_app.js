@@ -22,7 +22,61 @@ const metadata = {
     ],
 };
 
+const LOCAL_PWA_RELOAD_KEY = "wapu-local-pwa-cleanup-reloaded";
+
 function MyApp({ Component, pageProps }) {
+    React.useEffect(() => {
+        if (CONFIG.MODE !== "LOCAL" || !("serviceWorker" in navigator)) {
+            return;
+        }
+
+        let cancelled = false;
+
+        const cleanupLocalPwa = async () => {
+            const wasControlled = Boolean(navigator.serviceWorker.controller);
+            const registrations =
+                await navigator.serviceWorker.getRegistrations();
+            await Promise.all(
+                registrations.map((registration) => registration.unregister())
+            );
+
+            if ("caches" in window) {
+                const cacheNames = await caches.keys();
+                const workboxCaches = cacheNames.filter((name) =>
+                    name.toLowerCase().includes("workbox")
+                );
+                await Promise.all(
+                    workboxCaches.map((name) => caches.delete(name))
+                );
+            }
+
+            if (
+                !cancelled &&
+                wasControlled &&
+                sessionStorage.getItem(LOCAL_PWA_RELOAD_KEY) !== "true"
+            ) {
+                sessionStorage.setItem(LOCAL_PWA_RELOAD_KEY, "true");
+                window.location.reload();
+                return;
+            }
+
+            if (!wasControlled) {
+                sessionStorage.removeItem(LOCAL_PWA_RELOAD_KEY);
+            }
+        };
+
+        cleanupLocalPwa().catch((error) => {
+            console.warn(
+                "Unable to clean up the local PWA service worker",
+                error
+            );
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
     return (
         <React.Fragment>
             <Head>

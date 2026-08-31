@@ -13,8 +13,11 @@ import { useUserContext } from "../../context/userContext";
 import { isValidAmount } from "../../utils/validations";
 import NewSendConfirmationModal from "../../components/NewSendConfirmationModal";
 import { postInnerTransfer, postWithdrawal } from "../../api/api";
+import TamaguiNumpad from "../../components/TamaguiNumpad";
+import useAmountNumpad from "../../hooks/useAmountNumpad";
 
 export default function NewWithdrawal() {
+    const { numpadAvailable, numpadActive, toggleNumpad } = useAmountNumpad();
     const router = useRouter();
     const { getUser, user } = useUserContext();
 
@@ -281,7 +284,16 @@ export default function NewWithdrawal() {
                         onChange={handleAmountChange}
                         placeholder="Enter Amount"
                         keyboardType="decimal-pad"
+                        inputMode={numpadActive ? "none" : undefined}
                     />
+                    {numpadAvailable && (
+                        <TamaguiNumpad
+                            value={amount}
+                            onChange={handleAmountChange}
+                            enabled={numpadActive}
+                            onToggle={toggleNumpad}
+                        />
+                    )}
                     <XStack justifyContent="space-between" width={"$width90"}>
                         <Paragraph
                             color={"$neutral11"}
