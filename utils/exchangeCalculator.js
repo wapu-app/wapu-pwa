@@ -155,6 +155,75 @@ export const estimateFromDeposit = ({
     return buildQuote({ fundingUsdt, cryptoCurrency, ...inputs });
 };
 
+// Fee-free USDT -> sats. Mirrors buildQuote's sat leg exactly (round2 on the
+// USDT side, ceil on the sat side) so a USD-denominated amount lands on the
+// same integer the BTC quote would produce.
+export const usdtToSats = (usdtAmount, rates) => {
+    const btc = findRate(rates, BTC_USD_PAIR);
+    const btcUsdRate =
+        btc && typeof btc.buy === "number" && btc.buy > 0 ? btc.buy : null;
+    const amount = parseFloat(usdtAmount);
+    if (btcUsdRate === null || !(Number.isFinite(amount) && amount > 0)) {
+        return null;
+    }
+    return Math.ceil((round2(amount) / btcUsdRate) * SATS_PER_BTC);
+};
+
+// The units an amount field can be denominated in.
+export const AMOUNT_UNITS = ["ARS", "USD", "SAT"];
+
+// Converts one typed amount, in whichever unit the user picked, into all three
+// figures at once. Fee-free: feeFraction 0 collapses feeUsdt to 0 and leaves
+// fundingUsdt / fundingSat / fiatAmount untouched (fees belong to send-fiat).
+// Returns null when a rate is missing or the amount does not resolve to a
+// positive quote, so callers render an empty state instead of NaN.
+//
+// "USD" is the USDT leg — there is no ARS/USD pair, everything pivots on USDT.
+export const convertAmount = (value, unit, rates) => {
+    const base = { rates, fiatCurrency: "ARS", feeFraction: 0 };
+
+    if (unit === "SAT") {
+        const quote = estimateFromDeposit({
+            depositAmount: value,
+            cryptoCurrency: "BTC",
+            ...base,
+        });
+        // sat is what the user typed, not a round-trip of it.
+        return quote
+            ? {
+                  sat: Math.round(parseFloat(value)),
+                  usdt: quote.fundingUsdt,
+                  ars: quote.fiatAmount,
+              }
+            : null;
+    }
+
+    if (unit === "ARS") {
+        const quote = estimateFromFiat({
+            fiatAmount: value,
+            cryptoCurrency: "BTC",
+            ...base,
+        });
+        return quote
+            ? {
+                  sat: quote.fundingSat,
+                  usdt: quote.fundingUsdt,
+                  ars: quote.fiatAmount,
+              }
+            : null;
+    }
+
+    const quote = estimateFromDeposit({
+        depositAmount: value,
+        cryptoCurrency: "USDT",
+        ...base,
+    });
+    const sat = usdtToSats(value, rates);
+    return quote && sat !== null
+        ? { sat, usdt: quote.fundingUsdt, ars: quote.fiatAmount }
+        : null;
+};
+
 // Trims trailing zeros for display inside an editable field: 16.68, 25000, 27433.
 export const formatAmount = (n) => {
     if (!Number.isFinite(n)) {

@@ -8,6 +8,7 @@ import ErrorModal from "../../components/ErrorModal";
 import TamaguiButton from "../../components/TamaguiButton";
 import TamaguiInput from "../../components/TamaguiInput";
 import { TamaguiSelect } from "../../components/TamaguiSelect";
+import { CurrencySelect } from "../../components/CurrencySelect";
 import NewHeaderButton from "../../components/newHeaderButton";
 
 import WarningIcon from "../../public/warning_icon.svg";
@@ -19,8 +20,36 @@ import { useUserContext } from "../../context/userContext";
 import TamaguiNumpad from "../../components/TamaguiNumpad";
 import useAmountNumpad from "../../hooks/useAmountNumpad";
 import useTransactionStatus from "../../utils/useTransactionStatus";
+import { isValidAmount } from "../../utils/validations";
+import {
+    convertAmount,
+    AMOUNT_UNITS,
+    formatAmount,
+    formatSats,
+    formatUsdt,
+} from "../../utils/exchangeCalculator";
 
 const LIGHTNING_INVOICE_FALLBACK_TTL_MS = 15 * 60 * 1000; // used only if the backend timestamps are missing/invalid
+
+// CurrencySelect (the home balance picker) takes { name, id } and reports the
+// picked index, so mirror that shape here.
+const UNIT_ITEMS = AMOUNT_UNITS.map((unit) => ({ name: unit, id: unit }));
+
+// SAT is an integer unit, so it gets its own gate; ARS/USD reuse the shared
+// 2-decimal validator. This also closes the desktop path, where there is no
+// numpad and TamaguiNumpad's allowDecimal cannot help.
+const isValidForUnit = (value, unit) =>
+    unit === "SAT" ? /^\d*$/.test(value) : isValidAmount(value);
+
+// Renders a converted amount back into an editable string for `unit`.
+// formatAmount trims trailing zeros and stays within the 2 decimals
+// isValidAmount accepts, so the result survives a round trip through the input.
+const formatForUnit = (converted, unit) => {
+    if (unit === "SAT") {
+        return String(converted.sat);
+    }
+    return formatAmount(unit === "ARS" ? converted.ars : converted.usdt);
+};
 
 // Time-to-live of a Lightning invoice, derived from the backend's own window
 // (expires_at - created_at). Both timestamps are serialized in the same timezone,
@@ -62,18 +91,46 @@ export default function BitcoinDeposit() {
         setShowAbortButton
     );
 
-    const handleAmountChange = (value) => {
-        setAmountError(false);
-        const usdValuePattern = /^\d+(\\d+)?$/;
-        setAmount(value);
-        const minAmount = parseFloat(minDepositAmount);
-        const enteredAmount = parseFloat(satoshisToDollars(value, user.rateBtcUsdBuy));
-        if (
-            !usdValuePattern.test(value) ||
-            (minAmount && enteredAmount < minAmount)
-        ) {
-            setAmountError(true);
+    const ratesReady = Array.isArray(user.rates) && user.rates.length > 0;
+
+    // The minimum is denominated in USD, so every unit is checked through the
+    // converted USD figure. An amount that will not convert is an error too —
+    // otherwise Next goes dead with no visible reason. The one exception is SAT
+    // without rates: that deposit still works, exactly as it does today.
+    const computeAmountError = (value, unit) => {
+        if (!value) {
+            return false;
         }
+        const converted = convertAmount(value, unit, user.rates);
+        if (!converted) {
+            return unit !== "SAT" || ratesReady;
+        }
+        const minUsd = parseFloat(minDepositAmount);
+        return Number.isFinite(minUsd) && converted.usdt < minUsd;
+    };
+
+    const handleAmountChange = (value) => {
+        if (!isValidForUnit(value, currency)) {
+            return;
+        }
+        setAmount(value);
+        setAmountError(computeAmountError(value, currency));
+    };
+
+    // The picked unit drives the input from here on. The typed amount is
+    // carried across; repeated switches drift by the rounding in each leg.
+    const handleUnitChange = (index) => {
+        const next = UNIT_ITEMS[index]?.name;
+        if (!next || next === currency) {
+            return;
+        }
+        const converted = amount
+            ? convertAmount(amount, currency, user.rates)
+            : null;
+        const nextAmount = converted ? formatForUnit(converted, next) : "";
+        setCurrency(next);
+        setAmount(nextAmount);
+        setAmountError(computeAmountError(nextAmount, next));
     };
 
     const handleIconPressed = () => {
@@ -84,6 +141,8 @@ export default function BitcoinDeposit() {
         setStep(1);
         setInvoice("");
         setAmount("");
+        setCurrency("SAT");
+        setAmountError(false);
         setExpired(false);
         setExpiryEpoch(null);
         setRemainingMs(null);
@@ -101,8 +160,12 @@ export default function BitcoinDeposit() {
 
     const handleContinue = async (e) => {
         if (step === 1) {
+            // The endpoint is denominated in sats. `converted` is the same
+            // object the equivalence line renders, so the invoice is always for
+            // the figure the user saw. In SAT mode without rates it falls back
+            // to the typed integer, which is what this screen sends today.
             const payload = {
-                amount: amount,
+                amount: converted ? String(converted.sat) : amount,
             };
 
             try {
@@ -138,11 +201,6 @@ export default function BitcoinDeposit() {
         }
     };
 
-    function satoshisToDollars(satoshis, rateBtcUsdBuy) {
-        const btcAmount = satoshis / 100000000; // 1 BTC = 100,000,000 satoshis
-        return (btcAmount * rateBtcUsdBuy).toFixed(2)
-    }
-
     const formatRemaining = (ms) => {
         const total = Math.max(0, Math.floor((ms ?? 0) / 1000));
         const m = String(Math.floor(total / 60)).padStart(2, "0");
@@ -175,6 +233,31 @@ export default function BitcoinDeposit() {
         setMinDepositAmount(user.minDepositUsdt);
     }, [user]);
 
+    // Pure and cheap, so derived on every render — same approach as the price
+    // calculator. One call feeds the equivalence line, the error state and the
+    // payload, so the three can never disagree.
+    const converted = amount
+        ? convertAmount(amount, currency, user.rates)
+        : null;
+
+    const equivalenceText = !converted
+        ? "—"
+        : currency === "SAT"
+          ? `≈ ${formatUsdt(converted.usdt)} USD · ${formatAmount(
+                converted.ars
+            )} ARS`
+          : `≈ ${formatSats(converted.sat)} SAT`;
+
+    // The minimum is stored in USD; show it in whichever unit is active.
+    const minConverted = minDepositAmount
+        ? convertAmount(String(minDepositAmount), "USD", user.rates)
+        : null;
+    const minText =
+        minConverted && currency !== "USD"
+            ? currency === "SAT"
+                ? `${formatSats(minConverted.sat)} SAT`
+                : `${formatAmount(minConverted.ars)} ARS`
+            : `${minDepositAmount} USD`;
 
     return (
         <YStack
@@ -206,24 +289,54 @@ export default function BitcoinDeposit() {
                         Send SAT via Lightning Network
                     </H6>
 
-                    <Paragraph color={"$neutral12"} weight={"$2"} size={"$3"}>
-                        Amount in SATs
-                    </Paragraph>
+                    <XStack
+                        justifyContent="space-between"
+                        alignItems="center"
+                        gap={"$3"}
+                    >
+                        <Paragraph
+                            color={"$neutral12"}
+                            weight={"$2"}
+                            size={"$3"}
+                        >
+                            Amount
+                        </Paragraph>
+                        <CurrencySelect
+                            value={currency}
+                            onChange={handleUnitChange}
+                            items={UNIT_ITEMS}
+                        />
+                    </XStack>
                     <TamaguiInput
                         value={amount}
                         onChange={handleAmountChange}
-                        placeholder="Enter amount in Satoshis"
-                        keyboardType="numeric"
+                        placeholder={`Enter amount in ${currency}`}
+                        keyboardType={
+                            currency === "SAT" ? "numeric" : "decimal-pad"
+                        }
                         error={amountError}
-                        inputMode={numpadActive ? "none" : undefined}
-                    />Equivalent in USD: ${satoshisToDollars(amount, user.rateBtcUsdBuy)}
+                        // inputMode is what actually picks the mobile keyboard
+                        // on web; keyboardType above is the React Native name
+                        // the sibling screens use. "none" still wins so the
+                        // custom numpad can suppress the native keyboard.
+                        inputMode={
+                            numpadActive
+                                ? "none"
+                                : currency === "SAT"
+                                  ? "numeric"
+                                  : "decimal"
+                        }
+                    />
+                    <Paragraph color={"$neutral11"} weight={"$1"} size={"$3"}>
+                        {equivalenceText}
+                    </Paragraph>
                     {numpadAvailable && (
                         <TamaguiNumpad
                             value={amount}
                             onChange={handleAmountChange}
                             enabled={numpadActive}
                             onToggle={toggleNumpad}
-                            allowDecimal={false}
+                            allowDecimal={currency !== "SAT"}
                         />
                     )}
                     <YStack
@@ -242,7 +355,7 @@ export default function BitcoinDeposit() {
                                 weight={"$1"}
                                 size={"$4"}
                             >
-                                Minimum deposit {minDepositAmount}{" "} USD.
+                                Minimum deposit {minText}.
                             </Paragraph>
                         </XStack>
                         <XStack
@@ -278,7 +391,9 @@ export default function BitcoinDeposit() {
                         text="Next"
                         onClick={handleContinue}
                         isDisabled={
-                        !amount || amountError
+                            !amount ||
+                            amountError ||
+                            (currency !== "SAT" && !converted)
                         }
                     />
                 </YStack>
