@@ -35,6 +35,8 @@ const LIGHTNING_INVOICE_FALLBACK_TTL_MS = 15 * 60 * 1000; // used only if the ba
 // picked index, so mirror that shape here.
 const UNIT_ITEMS = AMOUNT_UNITS.map((unit) => ({ name: unit, id: unit }));
 
+const DEFAULT_UNIT = "ARS";
+
 // SAT is an integer unit, so it gets its own gate; ARS/USD reuse the shared
 // 2-decimal validator. This also closes the desktop path, where there is no
 // numpad and TamaguiNumpad's allowDecimal cannot help.
@@ -68,7 +70,7 @@ export default function BitcoinDeposit() {
     const router = useRouter();
     const { getUser, user } = useUserContext();
     const [step, setStep] = useState(1);
-    const [currency, setCurrency] = useState("SAT");
+    const [currency, setCurrency] = useState(DEFAULT_UNIT);
     const [amount, setAmount] = useState("");
     const [invoice, setInvoice] = useState("");
     const [minDepositAmount, setMinDepositAmount] = useState("");
@@ -95,15 +97,17 @@ export default function BitcoinDeposit() {
 
     // The minimum is denominated in USD, so every unit is checked through the
     // converted USD figure. An amount that will not convert is an error too —
-    // otherwise Next goes dead with no visible reason. The one exception is SAT
-    // without rates: that deposit still works, exactly as it does today.
+    // otherwise Next goes dead with no visible reason. But only once the rates
+    // are in: while getUser() resolves nothing converts yet, and that is not
+    // the user's fault. It also keeps a SAT deposit working without rates,
+    // exactly as this screen did before the unit selector existed.
     const computeAmountError = (value, unit) => {
         if (!value) {
             return false;
         }
         const converted = convertAmount(value, unit, user.rates);
         if (!converted) {
-            return unit !== "SAT" || ratesReady;
+            return ratesReady;
         }
         const minUsd = parseFloat(minDepositAmount);
         return Number.isFinite(minUsd) && converted.usdt < minUsd;
@@ -141,7 +145,7 @@ export default function BitcoinDeposit() {
         setStep(1);
         setInvoice("");
         setAmount("");
-        setCurrency("SAT");
+        setCurrency(DEFAULT_UNIT);
         setAmountError(false);
         setExpired(false);
         setExpiryEpoch(null);
