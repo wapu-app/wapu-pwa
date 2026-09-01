@@ -3,6 +3,14 @@ import Modal from "react-modal";
 import Image from "next/image";
 import Link from "next/link";
 
+export const MobileTrigger = styled.span`
+    display: inline-flex;
+
+    @media (min-width: 1024px) {
+        display: none;
+    }
+`;
+
 // NOTE: these exports are still consumed by components/Referral/referral.jsx
 // and components/Navbar/index.jsx (both legacy, out of scope for this
 // redesign). Keep them intact until those components are migrated.

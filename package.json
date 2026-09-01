@@ -3,6 +3,7 @@
     "version": "0.2.0",
     "private": true,
     "scripts": {
+        "predev": "rm -f public/sw.js public/sw.js.map public/workbox-*.js public/worker-*.js public/fallback-*.js",
         "dev": "next dev",
         "build": "node ./scripts/generate-version.js && next build",
         "start": "next start",

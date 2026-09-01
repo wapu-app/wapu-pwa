@@ -16,8 +16,11 @@ import CopyIcon from "../../public/copy_icon.svg";
 import { postDeposit } from "../../api/api";
 
 import { useUserContext } from "../../context/userContext";
+import TamaguiNumpad from "../../components/TamaguiNumpad";
+import useAmountNumpad from "../../hooks/useAmountNumpad";
 
 export default function NewBlockchainDeposit() {
+    const { numpadAvailable, numpadActive, toggleNumpad } = useAmountNumpad();
     const router = useRouter();
     const { getUser, user } = useUserContext();
 
@@ -208,7 +211,16 @@ export default function NewBlockchainDeposit() {
                         placeholder="Enter Amount"
                         keyboardType="decimal-pad"
                         error={amountError}
+                        inputMode={numpadActive ? "none" : undefined}
                     />
+                    {numpadAvailable && (
+                        <TamaguiNumpad
+                            value={amount}
+                            onChange={handleAmountChange}
+                            enabled={numpadActive}
+                            onToggle={toggleNumpad}
+                        />
+                    )}
                     <YStack
                         backgroundColor={"$neutral3"}
                         padding={"$4"}
