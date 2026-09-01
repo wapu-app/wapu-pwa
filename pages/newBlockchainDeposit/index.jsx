@@ -122,7 +122,11 @@ export default function NewBlockchainDeposit() {
                     setErrorModalState(true);
                 }
             } catch (error) {
-                console.error("error with deposit: ", e);
+                console.error("error with deposit: ", error);
+                setErrorMessage(
+                    "An unexpected error occurred. Please try again later."
+                );
+                setErrorModalState(true);
             }
         } else {
             router.push(
