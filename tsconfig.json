@@ -21,6 +21,10 @@
         "name": "next"
       }
     ],
+    "types": [
+      "vitest/globals",
+      "@testing-library/jest-dom"
+    ],
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
     "target": "ES2017"
