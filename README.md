@@ -35,3 +35,4 @@ Amplify sets a Continuous Deployment process as default, so the deployment is tr
 -   If you're deploying to QA, you need to merge `develop` into `qa`, the deployment is triggered automatically.
 -   If you're deploying to Staging, you need to merge `qa` into `staging`, the deployment is triggered automatically.
 -   If you're deploying to prod, you need to create a branch release name `release-<version>` from `staging`, and then merged it into `main`, this can include all the changes from `staging`, usually all the sprint's work, or a hotfix.
+
