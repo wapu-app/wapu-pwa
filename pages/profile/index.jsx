@@ -19,6 +19,7 @@ const initialState = {
     username: "",
     telegram: "",
     phone: "",
+    npub: "",
     blockchain: "",
     email: "",
     betaVersion: false,
@@ -43,6 +44,7 @@ export default function Profile() {
                     username: profileData.data.username || "",
                     telegram: profileData.data.telegram || "",
                     phone: profileData.data.phone || "",
+                    npub: profileData.data.npub || "",
                     email: profileData.data.email || "",
                     blockchain: profileData.data.network || "",
                     betaVersion: Boolean(profileData.data.beta_version),
@@ -60,6 +62,7 @@ export default function Profile() {
         profile.username !== savedProfile.username ||
         profile.telegram !== savedProfile.telegram ||
         profile.phone !== savedProfile.phone ||
+        profile.npub !== savedProfile.npub ||
         profile.betaVersion !== savedProfile.betaVersion;
 
     const handleBack = () => {
@@ -106,6 +109,10 @@ export default function Profile() {
         setProfile((prev) => ({ ...prev, telegram: value }));
     };
 
+    const handleNpubChange = (value) => {
+        setProfile((prev) => ({ ...prev, npub: value }));
+    };
+
     const handleBetaVersionToggle = () => {
         setProfile((prev) => ({ ...prev, betaVersion: !prev.betaVersion }));
     };
@@ -123,6 +130,7 @@ export default function Profile() {
                 username: profile.username,
                 telegram: profile.telegram,
                 phone: profile.phone,
+                npub: profile.npub,
                 blockchain: profile.blockchain,
                 beta_version: profile.betaVersion ? "1" : "0",
             });
@@ -137,6 +145,10 @@ export default function Profile() {
                     username: updatedProfileData.username || "",
                     telegram: updatedProfileData.telegram || "",
                     phone: updatedProfileData.phone || "",
+                    npub:
+                        updatedProfileData.npub !== undefined
+                            ? updatedProfileData.npub || ""
+                            : profile.npub,
                 };
                 setProfile(nextProfile);
                 setSavedProfile(nextProfile);
@@ -228,6 +240,16 @@ export default function Profile() {
                         value={profile.telegram}
                         onChange={handleTelegramChange}
                         placeholder={"Telegram"}
+                    />
+
+                    <TamaguiInput
+                        label={"npub"}
+                        value={profile.npub}
+                        onChange={handleNpubChange}
+                        placeholder={"npub1..."}
+                        autoCapitalize={"none"}
+                        autoCorrect={false}
+                        spellCheck={false}
                     />
 
                     <TamaguiCheckbox
