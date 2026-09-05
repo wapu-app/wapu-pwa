@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Header } from "../Header";
-import { Navigation } from "../Navigation";
-import { TransactionChoiceModal } from "../transactionChoice";
 import { usePathname, useRouter } from "next/navigation";
 import Logo from "../../public/logoWAPU.png";
 import Image from "next/image";
@@ -9,41 +7,27 @@ import {
     PrincipalContainer,
     CustomMain,
     HiddenNavigation,
-    CustomModal,
-    ModalContainer,
-    customStyles,
-    Ptext,
-    ButtonContainer,
     LogoContainer,
 } from "./styled";
 import Cookies from "js-cookie";
 import { useUserContext } from "../../context/userContext";
-import { Button } from "../Button";
 import CONFIG from "../../config/environment/current";
 import { isAuthExpired, getAccessToken } from "../../utils/auth";
 import HelpModal from "../HelpModal";
 import { isAnAuthablePage } from "../../utils/validations";
 import NewNavigation from "../NewFooterNavigation/NewFooterNavigation";
 
-import { getSettings, getProfile } from "../../api/api";
-
 export const Layout = ({ children }) => {
     const CHECK_AUTH_TOKEN_INTERVAL = 5000;
     const [navHidden, setNavHidden] = useState(false);
     const [logoHidden, setLogoHidden] = useState(false);
-    const [newDesign, setNewDesign] = useState(false);
     const pathname = usePathname();
     const [authToken, setAuthToken] = useState(Cookies.get("isLoggedIn"));
     const {
-        isOpen,
-        setIsOpen,
-        transactionChoiceIsOpen,
-        setTransactionChoiceIsOpen,
         setHelpModalState,
         helpModalState,
         user,
         getUser,
-        setUser,
     } = useUserContext();
     const router = useRouter();
 
@@ -55,74 +39,32 @@ export const Layout = ({ children }) => {
     const checkAuthIntervalRef = useRef(null);
 
     const showNav = [
-        "/oldHome",
         "/home",
         "/qrPayment",
         "/pix",
-        "/deposit",
-        "/movements",
         "/profile",
-        "/withdrawal",
-        "/send",
         "/innerTransfer",
-        "/transactionComplete",
-        "/transactionDetail",
     ];
 
     const showLogo = [
         "/",
-        "/signup",
         "/recoverPassword",
         "/resetPassword",
         "/verifyEmail",
         "/processing",
         "/version",
-        "/deposit",
     ];
 
-    const getDesignVersion = async () => {
-        const settings = await getSettings();
-        return settings;
-    };
-
     useEffect(() => {
-        // Settings are only needed to pick the sign-up redirect for logged-out
-        // visitors on an authable page; skip the fetch entirely otherwise.
         if (Cookies.get("isLoggedIn") === "true" || !isAnAuthablePage(pathname)) {
             return;
         }
-        getDesignVersion()
-            .then((settings) =>
-                settings?.webapp_design === "tamagui-1.0"
-                    ? "/newSignUp"
-                    : "/signup"
-            )
-            // If /settings is unreachable (backend down, network, CORS) still send
-            // the logged-out visitor to sign-up instead of leaving them on a hung
-            // page with no login. /signup itself redirects to /newSignUp.
-            .catch(() => "/signup")
-            .then((destination) => router.push(destination));
+        router.push("/newSignUp");
     }, [authToken, pathname]);
 
-    const checkBetaVersion = async () => {
-        try {
-            const profileData = await getProfile();
-            // Only redirect from home to old home if user explicitly has beta_version set to 0
-            if (pathname === "/home" && profileData.data.beta_version === 0) {
-                router.push("/oldHome");
-            }
-        } catch (error) {
-            console.error("Error fetching profile:", error);
-        }
-    };
-
     useEffect(() => {
-        if (["/oldHome", "/home"].includes(pathname)) {
-            checkBetaVersion();
-        }
         setNavHidden(!showNav.includes(pathname));
         setLogoHidden(!showLogo.includes(pathname));
-        setNewDesign(pathname !== "/oldHome");
     }, [pathname]);
 
     useEffect(() => {
@@ -153,9 +95,6 @@ export const Layout = ({ children }) => {
         // Created once on mount; reads the live pathname via pathnameRef.
     }, []);
 
-    const toAlternativeDepositChoice = () => {
-        setHelpModalState(true);
-    };
     const whatsappMessage = `Hi, I need to top up my Wapu account through Wise, Pix or a bank transfer. My user is ${user.username}`;
     const helpModalMessage = {
         title: "Do you need an alternative method for making a deposit?",
@@ -194,39 +133,6 @@ export const Layout = ({ children }) => {
                         setHelpModalState(false);
                     }}
                 />
-                <CustomModal
-                    isOpen={isOpen}
-                    onRequestClose={() => setIsOpen(false)}
-                    style={customStyles}
-                >
-                    <ModalContainer>
-                        <Ptext>Select how to deposit</Ptext>
-                        <ButtonContainer>
-                            {user.pixDeposit ? (
-                                <Button text={"Pix"} href={"/pix"} />
-                            ) : (
-                                <></>
-                            )}
-                            {user.deposit ? (
-                                <Button text={"Blockchain"} href={"/deposit"} />
-                            ) : (
-                                <></>
-                            )}
-                            {user.alternativeDeposit ? (
-                                <Button
-                                    text={"Other alternatives"}
-                                    onClick={toAlternativeDepositChoice}
-                                />
-                            ) : (
-                                <></>
-                            )}
-                        </ButtonContainer>
-                    </ModalContainer>
-                </CustomModal>
-                <TransactionChoiceModal
-                    isOpen={transactionChoiceIsOpen}
-                    close={() => setTransactionChoiceIsOpen(false)}
-                ></TransactionChoiceModal>
                 {logoHidden ? (
                     <></>
                 ) : (
@@ -238,7 +144,7 @@ export const Layout = ({ children }) => {
                 {navHidden ? (
                     <HiddenNavigation />
                 ) : (
-                    <>{newDesign ? <NewNavigation /> : <Navigation />}</>
+                    <NewNavigation />
                 )}
             </CustomMain>
         </PrincipalContainer>

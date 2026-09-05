@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 export default function TransactionCompletePage() {
     const router = useRouter();
     const backHome = () => {
-        router.push("/oldHome");
+        router.push("/home");
     };
     return (
         <CustomContainer>

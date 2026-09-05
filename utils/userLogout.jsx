@@ -1,12 +1,6 @@
 import Cookies from "js-cookie";
-import { getSettings, logoutUser } from "../api/api";
-
-const getDesignVersion = async () => {
-    const settings = await getSettings();
-    return settings;
-};
+import { logoutUser } from "../api/api";
 export default async function userLogout() {
-    const settings = await getDesignVersion().catch(() => null);
     try {
         await logoutUser();
     } catch (error) {
@@ -20,8 +14,6 @@ export default async function userLogout() {
             sameSite: "strict",
         });
         Cookies.remove("access_token");
-        window.location.replace(
-            settings?.webapp_design === "tamagui-1.0" ? "/newSignUp" : "/signup"
-        );
+        window.location.replace("/newSignUp");
     }
 }

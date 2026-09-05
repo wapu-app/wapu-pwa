@@ -45,7 +45,7 @@ function LoginByMagicLink({ tempPass }) {
                     sameSite: "strict",
                     expires: 1,
                 });
-                router.push("/oldHome");
+                router.push("/home");
             } catch (error) {
                 setLoginMessage(error.message);
                 setErrorModalState(true);

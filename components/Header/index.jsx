@@ -22,7 +22,6 @@ export const Header = () => {
         "/resetPassword",
         "/verifyEmail",
         "/processing",
-        "/deposit",
         "/",
         "/login",
         "/newSignUp",
@@ -40,7 +39,7 @@ export const Header = () => {
         "/newBlockchainDeposit",
         "/bitcoinDeposit"
     ];
-    const helpButtonPath = ["/send", "/qrPayment"];
+    const helpButtonPath = ["/qrPayment"];
     useEffect(() => {
         if (hiddenPath.includes(pathname)) {
             setHeaderHidden(true);

@@ -2,8 +2,7 @@
 import { useContext, createContext, useState, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { isAnAuthablePage } from "../utils/validations";
-import { fetchUserData, getSettings } from "../api/api";
-import CONFIG from "../config/environment/current";
+import { fetchUserData } from "../api/api";
 const UserContext = createContext();
 
 export const UserContextProvider = ({ children }) => {
@@ -17,32 +16,12 @@ export const UserContextProvider = ({ children }) => {
     });
     const [helpModalState, setHelpModalState] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
-    const [transactionChoiceIsOpen, setTransactionChoiceIsOpen] =
-        useState(false);
     const [notShow, setNotShow] = useState(false);
     const pathname = usePathname();
     const router = useRouter();
 
-    const getDesignVersion = async () => {
-        const settings = await getSettings();
-        return settings;
-    };
-
-    // Route an unauthenticated visitor to the right sign-up screen. A failing
-    // /settings fetch (backend down, network, CORS) must never block the
-    // redirect: default to /signup (which itself redirects to /newSignUp) so the
-    // app degrades gracefully instead of hanging on a blank page.
     const redirectToSignup = async () => {
-        let destination = "/signup";
-        try {
-            const settings = await getDesignVersion();
-            if (settings?.webapp_design === "tamagui-1.0") {
-                destination = "/newSignUp";
-            }
-        } catch (error) {
-            // keep the /signup default
-        }
-        router.push(destination);
+        router.push("/newSignUp");
     };
     const userFetchPromise = useRef(null);
 
@@ -154,7 +133,6 @@ export const UserContextProvider = ({ children }) => {
                         ? userData.data.settings.features.mandatory_alias_validation
                         : false,
                     userDomain: userData.data.username,
-                    betaVersion: userData.data.beta_version,
                 });
             } catch (error) {
                 console.error("Failed to fetch user data:", error);
@@ -176,8 +154,6 @@ export const UserContextProvider = ({ children }) => {
                     setHelpModalState,
                     isOpen,
                     setIsOpen,
-                    transactionChoiceIsOpen,
-                    setTransactionChoiceIsOpen,
                     notShow,
                     setNotShow,
                 }}
