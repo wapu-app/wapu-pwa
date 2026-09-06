@@ -42,7 +42,6 @@ export const Layout = ({ children }) => {
     const router = useRouter();
 
     const pathnameRef = useRef(pathname);
-    pathnameRef.current = pathname;
     const refreshIntervalRef = useRef(null);
     // "/" renders <Starting/>, the entry router that sends the visitor to
     // /home or /newSignUp on its own. Gating it here would redirect before it
@@ -116,6 +115,13 @@ export const Layout = ({ children }) => {
     useEffect(() => {
         setNavHidden(!showNav.includes(pathname));
         setLogoHidden(!showLogo.includes(pathname));
+    }, [pathname]);
+
+    // The hourly interval below subscribes once and reads this ref instead of
+    // the pathname, so the timer survives navigation. Writing it after commit
+    // keeps render free of side effects.
+    useEffect(() => {
+        pathnameRef.current = pathname;
     }, [pathname]);
 
     useEffect(() => {
