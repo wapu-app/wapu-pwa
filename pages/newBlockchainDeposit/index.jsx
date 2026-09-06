@@ -9,9 +9,9 @@ import TamaguiButton from "../../components/TamaguiButton";
 import TamaguiInput from "../../components/TamaguiInput";
 import { TamaguiSelect } from "../../components/TamaguiSelect";
 import NewHeaderButton from "../../components/newHeaderButton";
+import CopyButton from "../../components/CopyButton";
 
 import WarningIcon from "../../public/warning_icon.svg";
-import CopyIcon from "../../public/copy_icon.svg";
 
 import { postDeposit } from "../../api/api";
 
@@ -77,10 +77,6 @@ export default function NewBlockchainDeposit() {
     const handleCurrencyChange = (index) => {
         const selectedCurrency = currencyOptions.at(index).name;
         setCurrency(selectedCurrency);
-    };
-
-    const handleIconPressed = () => {
-        navigator.clipboard.writeText(address);
     };
 
     const handleBack = () => {
@@ -298,8 +294,7 @@ export default function NewBlockchainDeposit() {
                         value={address}
                         editable={false}
                         color={"$neutral12"}
-                        icon={CopyIcon}
-                        onPressIcon={handleIconPressed}
+                        iconSlot={<CopyButton value={address} />}
                         textAlign="right"
                     />
                     <Paragraph color={"$neutral12"} weight={"$1"} size={"$4"}>

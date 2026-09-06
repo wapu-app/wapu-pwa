@@ -4,20 +4,15 @@ import { Dialog, YStack, XStack, Paragraph } from "tamagui";
 
 import TamaguiInput from "../TamaguiInput";
 import TamaguiButton from "../TamaguiButton";
-import TamaguiIconButton from "../TamaguiIconButton";
+import CopyButton from "../CopyButton";
 import NewHeaderButton from "../newHeaderButton";
-
-import CopyIcon from "../../public/icons/content_copy_FILL0_wght400_GRAD0_opsz24.svg";
 
 import { getReferralCode } from "../../api/api";
 import { useUserContext } from "../../context/userContext";
 
-const COPIED_FEEDBACK_MS = 1500;
-
 export default function Referral({ isOpen, setIsOpen }) {
     const [email, setEmail] = useState("");
     const [referralLink, setReferralLink] = useState("");
-    const [copied, setCopied] = useState(false);
     const { user } = useUserContext();
 
     const handleGetReferralCode = async () => {
@@ -32,12 +27,6 @@ export default function Referral({ isOpen, setIsOpen }) {
     useEffect(() => {
         handleGetReferralCode();
     }, []);
-
-    const handleCopy = () => {
-        navigator.clipboard.writeText(referralLink);
-        setCopied(true);
-        setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS);
-    };
 
     return (
         <Dialog modal open={isOpen} onOpenChange={setIsOpen}>
@@ -168,13 +157,12 @@ export default function Referral({ isOpen, setIsOpen }) {
                                             editable={false}
                                         />
                                     </YStack>
-                                    <TamaguiIconButton
-                                        icon={CopyIcon}
-                                        onClick={handleCopy}
+                                    <CopyButton
+                                        value={referralLink}
                                         backgroundColor={"$pink500"}
                                         size={"44px"}
                                         gap={"$1"}
-                                        label={copied ? "Copied" : "Copy"}
+                                        label={"Copy"}
                                         colorLabel={"$neutral11"}
                                         fontSizeLabel={"$5"}
                                     />

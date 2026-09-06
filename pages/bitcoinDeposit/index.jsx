@@ -10,9 +10,9 @@ import TamaguiInput from "../../components/TamaguiInput";
 import { TamaguiSelect } from "../../components/TamaguiSelect";
 import { CurrencySelect } from "../../components/CurrencySelect";
 import NewHeaderButton from "../../components/newHeaderButton";
+import CopyButton from "../../components/CopyButton";
 
 import WarningIcon from "../../public/warning_icon.svg";
-import CopyIcon from "../../public/copy_icon.svg";
 
 import {postDeposit, postDepositLightning} from "../../api/api";
 
@@ -139,10 +139,6 @@ export default function BitcoinDeposit() {
         const nextAmount = converted ? formatForUnit(converted, next) : "";
         setCurrency(next);
         setAmount(nextAmount);
-    };
-
-    const handleIconPressed = () => {
-        navigator.clipboard.writeText(invoice);
     };
 
     const resetToAmountStep = () => {
@@ -462,8 +458,9 @@ export default function BitcoinDeposit() {
                         value={invoice}
                         editable={false}
                         color={"$neutral12"}
-                        icon={expired ? undefined : CopyIcon}
-                        onPressIcon={expired ? undefined : handleIconPressed}
+                        iconSlot={
+                            expired ? undefined : <CopyButton value={invoice} />
+                        }
                         textAlign="right"
                     />
                     {expired ? (

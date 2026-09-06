@@ -3,12 +3,11 @@ import { useState, useEffect } from "react";
 
 import { YStack, XStack, Paragraph, Separator } from "tamagui";
 import TamaguiButton from "../../components/TamaguiButton";
-import TamaguiIconButton from "../../components/TamaguiIconButton";
+import CopyButton from "../../components/CopyButton";
 import NewHeaderButton from "../../components/newHeaderButton";
 import Image from "next/image";
 import { cancelTransaction } from "../../utils/cancelPayment";
 import NetworkIcon from "../../public/network_icon.svg";
-import CopyIcon from "../../public/copy_icon.svg";
 
 import { getTransaction } from "../../api/api";
 
@@ -350,13 +349,8 @@ export default function index() {
                                     {movement.transaction_id}
                                 </Paragraph>
 
-                                <TamaguiIconButton
-                                    icon={CopyIcon}
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(
-                                            movement.transaction_id
-                                        );
-                                    }}
+                                <CopyButton
+                                    value={movement.transaction_id}
                                 />
                             </XStack>
                         </XStack>
