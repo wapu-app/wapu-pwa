@@ -1,5 +1,4 @@
 "use client";
-import { useState, useEffect } from "react";
 import { CustomHeader, CustomHelpButton, Container } from "./styled";
 import Burger from "../Burger/index";
 import { usePathname } from "next/navigation";
@@ -9,50 +8,46 @@ import { mdiHelp } from "@mdi/js";
 import { useUserContext } from "../../context/userContext";
 import MediaIcons from "../MediaIcons";
 
+// Routes that bring their own header (a NewHeaderButton with a back arrow, or
+// none at all), so the global one must stay out of the way.
+const HIDDEN_PATHS = [
+    "/signup",
+    "/recoverPassword",
+    "/resetPassword",
+    "/verifyEmail",
+    "/processing",
+    "/",
+    "/login",
+    "/newSignUp",
+    "/home",
+    "/newSend",
+    "/newFastSend",
+    "/newTransactionComplete",
+    "/version",
+    "/newTransactionPending",
+    "/newTransactionDetail",
+    "/newMovements",
+    "/newDepositChoice",
+    "/newAlternativeDeposit",
+    "/newWithdrawal",
+    "/newBlockchainDeposit",
+    "/bitcoinDeposit",
+    "/profile",
+    "/apiKey",
+];
+
+const HELP_BUTTON_PATHS = ["/qrPayment"];
+
 export const Header = () => {
     const { setHelpModalState } = useUserContext();
-    const [headerHidden, setHeaderHidden] = useState(false);
-    const [helpButtonShow, setHelpButtonShow] = useState(false);
     const pathname = usePathname();
 
-    const hiddenPath = [
-        "/signup",
-        "/recoverPassword",
-        "/resetPassword",
-        "/verifyEmail",
-        "/processing",
-        "/",
-        "/login",
-        "/newSignUp",
-        "/home",
-        "/newSend",
-        "/newFastSend",
-        "/newTransactionComplete",
-        "/version",
-        "/newTransactionPending",
-        "/newTransactionDetail",
-        "/newMovements",
-        "/newDepositChoice",
-        "/newAlternativeDeposit",
-        "/newWithdrawal",
-        "/newBlockchainDeposit",
-        "/bitcoinDeposit"
-    ];
-    const helpButtonPath = ["/qrPayment"];
-    useEffect(() => {
-        if (hiddenPath.includes(pathname)) {
-            setHeaderHidden(true);
-        } else {
-            setHeaderHidden(false);
-        }
-    }, [pathname]);
-    useEffect(() => {
-        if (helpButtonPath.includes(pathname)) {
-            setHelpButtonShow(true);
-        } else {
-            setHelpButtonShow(false);
-        }
-    }, [pathname]);
+    // Derived, not state: with useState(false) + useEffect the first client
+    // render always mounted <Burger />, which then unmounted on the next
+    // commit — a header flash plus the mount effects Burger carries (getUser,
+    // getSettings, the referral dialog) firing on every hidden route.
+    const headerHidden = HIDDEN_PATHS.includes(pathname);
+    const helpButtonShow = HELP_BUTTON_PATHS.includes(pathname);
 
     return (
         <Container>

@@ -22,6 +22,7 @@ export default defineConfig({
             include: [
                 "components/Tamagui*/index.{js,jsx,ts,tsx}",
                 "components/layout/index.jsx",
+                "components/Header/index.jsx",
                 "hooks/useAmountNumpad.jsx",
                 "utils/auth.jsx",
                 "pages/login/index.jsx",

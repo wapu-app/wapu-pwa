@@ -25,7 +25,7 @@ const initialState = {
 
 export default function Profile() {
     const router = useRouter();
-    const { user } = useUserContext();
+    const { user, getUser } = useUserContext();
     const [errorMessage, setErrorMessage] = useState(null);
     const [errorModalState, setErrorModalState] = useState(false);
     const [profile, setProfile] = useState(initialState);
@@ -53,6 +53,14 @@ export default function Profile() {
             }
         };
         fetchProfile();
+    }, []);
+
+    // The global header used to mount a Burger on this route, and that Burger's
+    // mount effect was the only thing pulling /users/home into context. With the
+    // header gone, user.email — read by the password recovery link below — would
+    // stay empty, so this screen fetches it itself.
+    useEffect(() => {
+        getUser();
     }, []);
 
     const isDirty =
