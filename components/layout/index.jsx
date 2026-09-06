@@ -13,7 +13,11 @@ import {
 import Cookies from "js-cookie";
 import { useUserContext } from "../../context/userContext";
 import CONFIG from "../../config/environment/current";
-import { isAuthExpired, refreshAccessToken } from "../../utils/auth";
+import {
+    getAccessToken,
+    isAuthExpired,
+    refreshAccessToken,
+} from "../../utils/auth";
 import HelpModal from "../HelpModal";
 import { isAnAuthablePage } from "../../utils/validations";
 import NewNavigation from "../NewFooterNavigation/NewFooterNavigation";
@@ -84,7 +88,10 @@ export const Layout = ({ children }) => {
                 return;
             }
 
-            const token = await refreshAccessToken();
+            // getAccessToken is cookie-first: a valid access_token short-circuits
+            // without a network round trip (e.g. the isLoggedIn marker was lost
+            // but the JWT is still fresh); otherwise it runs the deduped refresh.
+            const token = await getAccessToken();
             if (cancelled) {
                 return;
             }
@@ -101,7 +108,10 @@ export const Layout = ({ children }) => {
         return () => {
             cancelled = true;
         };
-    }, [pathname]);
+        // sessionNeedsRestore is in the deps because the token can expire while
+        // the page stays mounted: the gate then closes on the next re-render,
+        // and this effect must re-run to refresh and re-open it.
+    }, [pathname, sessionNeedsRestore]);
 
     useEffect(() => {
         setNavHidden(!showNav.includes(pathname));

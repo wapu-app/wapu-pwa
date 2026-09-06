@@ -3,7 +3,11 @@ import Cookies from "js-cookie";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Layout } from "../../../components/layout";
-import { isAuthExpired, refreshAccessToken } from "../../../utils/auth";
+import {
+    getAccessToken,
+    isAuthExpired,
+    refreshAccessToken,
+} from "../../../utils/auth";
 
 const mocks = vi.hoisted(() => ({
     pathname: "/home",
@@ -29,6 +33,7 @@ vi.mock("../../../context/userContext", () => ({
     }),
 }));
 vi.mock("../../../utils/auth", () => ({
+    getAccessToken: vi.fn(),
     isAuthExpired: vi.fn(),
     refreshAccessToken: vi.fn(),
 }));
@@ -37,6 +42,7 @@ vi.mock("js-cookie", () => ({
 }));
 
 const mockedCookiesGet = vi.mocked(Cookies.get);
+const mockedGetAccessToken = vi.mocked(getAccessToken);
 const mockedIsAuthExpired = vi.mocked(isAuthExpired);
 const mockedRefreshAccessToken = vi.mocked(refreshAccessToken);
 
@@ -46,6 +52,7 @@ describe("Layout session lifecycle", () => {
         mocks.push.mockReset();
         mocks.replace.mockReset();
         mockedCookiesGet.mockReset();
+        mockedGetAccessToken.mockReset();
         mockedIsAuthExpired.mockReset();
         mockedRefreshAccessToken.mockReset();
     });
@@ -56,12 +63,12 @@ describe("Layout session lifecycle", () => {
 
     it("restores a protected route before redirecting when the local marker is absent", async () => {
         mockedCookiesGet.mockReturnValue(undefined);
-        mockedRefreshAccessToken.mockResolvedValue("new-access-token");
+        mockedGetAccessToken.mockResolvedValue("new-access-token");
 
         render(<Layout>Protected content</Layout>);
 
         await waitFor(() => {
-            expect(mockedRefreshAccessToken).toHaveBeenCalledOnce();
+            expect(mockedGetAccessToken).toHaveBeenCalledOnce();
         });
         expect(mocks.push).not.toHaveBeenCalled();
         expect(mocks.replace).not.toHaveBeenCalled();
@@ -70,7 +77,7 @@ describe("Layout session lifecycle", () => {
 
     it("redirects to signup when protected-route recovery fails", async () => {
         mockedCookiesGet.mockReturnValue(undefined);
-        mockedRefreshAccessToken.mockResolvedValue(null);
+        mockedGetAccessToken.mockResolvedValue(null);
 
         render(<Layout>Protected content</Layout>);
 
@@ -82,7 +89,7 @@ describe("Layout session lifecycle", () => {
     it("lets the entry route resolve its own destination instead of forcing an auth redirect", async () => {
         mocks.pathname = "/";
         mockedCookiesGet.mockReturnValue(undefined);
-        mockedRefreshAccessToken.mockResolvedValue(null);
+        mockedGetAccessToken.mockResolvedValue(null);
 
         render(<Layout>Entry content</Layout>);
 
@@ -91,18 +98,42 @@ describe("Layout session lifecycle", () => {
         // "/" renders <Starting/>, which picks /home or /newSignUp on its own.
         // Layout must not gate it, or the visitor never reaches that decision.
         expect(screen.getByText("Entry content")).toBeInTheDocument();
+        expect(mockedGetAccessToken).not.toHaveBeenCalled();
         expect(mockedRefreshAccessToken).not.toHaveBeenCalled();
         expect(mocks.replace).not.toHaveBeenCalled();
     });
 
     it("does not mount protected content while session recovery is pending", () => {
         mockedCookiesGet.mockReturnValue(undefined);
-        mockedRefreshAccessToken.mockReturnValue(new Promise(() => {}));
+        mockedGetAccessToken.mockReturnValue(new Promise(() => {}));
 
         render(<Layout>Protected content</Layout>);
 
         expect(screen.queryByText("Protected content")).not.toBeInTheDocument();
         expect(screen.getByText("Restoring your session…")).toBeInTheDocument();
+    });
+
+    it("recovers when the token expires while a protected page stays mounted", async () => {
+        mockedCookiesGet.mockReturnValue("true");
+        mockedIsAuthExpired.mockReturnValue(false);
+
+        const rendered = render(<Layout>Protected content</Layout>);
+        expect(screen.getByText("Protected content")).toBeInTheDocument();
+
+        // The token expires in place; some unrelated state change re-renders.
+        mockedIsAuthExpired.mockReturnValue(true);
+        mockedGetAccessToken.mockResolvedValue("new-access-token");
+        rendered.rerender(<Layout>Protected content</Layout>);
+
+        // The gate must trigger a restore and re-open once it succeeds,
+        // instead of leaving the spinner stuck with no way back.
+        await waitFor(() => {
+            expect(mockedGetAccessToken).toHaveBeenCalledOnce();
+        });
+        await waitFor(() => {
+            expect(screen.getByText("Protected content")).toBeInTheDocument();
+        });
+        expect(mocks.replace).not.toHaveBeenCalled();
     });
 
     it("forces one refresh per hour while a protected page stays open", async () => {
