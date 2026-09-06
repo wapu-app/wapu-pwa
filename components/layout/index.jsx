@@ -25,6 +25,10 @@ export const Layout = ({ children }) => {
     const [logoHidden, setLogoHidden] = useState(false);
     const pathname = usePathname();
     const [restoredPathname, setRestoredPathname] = useState(null);
+    // The session check below reads cookies, which only exist in the browser.
+    // Gate it behind mount so the first client render matches the server HTML
+    // and hydration does not fail.
+    const [hasMounted, setHasMounted] = useState(false);
     const {
         setHelpModalState,
         helpModalState,
@@ -36,11 +40,14 @@ export const Layout = ({ children }) => {
     const pathnameRef = useRef(pathname);
     pathnameRef.current = pathname;
     const refreshIntervalRef = useRef(null);
+    const isAuthable = isAnAuthablePage(pathname);
     const sessionNeedsRestore =
-        isAnAuthablePage(pathname) &&
+        isAuthable &&
         (Cookies.get("isLoggedIn") !== "true" || isAuthExpired());
     const canRenderProtectedContent =
-        !sessionNeedsRestore || restoredPathname === pathname;
+        !isAuthable ||
+        (hasMounted &&
+            (!sessionNeedsRestore || restoredPathname === pathname));
 
     const showNav = [
         "/home",
@@ -59,10 +66,14 @@ export const Layout = ({ children }) => {
     ];
 
     useEffect(() => {
+        setHasMounted(true);
+    }, []);
+
+    useEffect(() => {
         let cancelled = false;
 
         const restoreSession = async () => {
-            if (!isAnAuthablePage(pathname)) {
+            if (!isAuthable) {
                 return;
             }
             if (!sessionNeedsRestore) {
