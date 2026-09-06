@@ -56,9 +56,6 @@ export default function Profile() {
         fetchProfile();
     }, []);
 
-    // /users/profile does not carry the lightning address (nor the email used
-    // by the password recovery link below), so pull /users/home into context.
-    // Nothing else on this route does it now that the global header is gone.
     useEffect(() => {
         getUser();
     }, []);
