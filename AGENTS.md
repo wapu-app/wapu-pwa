@@ -111,6 +111,19 @@ UI building blocks. Naming convention: `PascalCase` directories, each containing
 
 ## For AI Agents
 
+### Git & Pull Requests
+- **Always open pull requests against `develop`.** Never against `main`. `develop` is the
+  repository default branch on GitHub; `main` is the production line and receives changes
+  from `develop`, not from feature branches.
+- Branch off `develop` and keep the branch on `develop`.
+- **Do not merge `main` into a feature branch.** It drags `main`-only commits into the PR
+  diff, which makes `main` look like the correct base and hides the real change. If the
+  branch is stale, rebase on `develop` or merge `develop` in.
+- With `gh`, the base is explicit: `gh pr create --base develop`.
+- **Write commit messages and pull requests in Spanish.** Subject in the imperative
+  ("Corregir…", "Agregar…", "Remover…"), matching the existing history. Code, identifiers,
+  and this documentation stay in English.
+
 ### Working Here
 - Add new routes as subdirectories under `pages/` following the existing pattern.
 - New reusable UI → `components/`, preferring Tamagui components for new work.
