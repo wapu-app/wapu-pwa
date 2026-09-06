@@ -137,9 +137,14 @@ UI building blocks. Naming convention: `PascalCase` directories, each containing
 - Do not mix styling systems within the same component
 
 ### Testing Requirements
-- No automated frontend test suite currently
-- Manually test on mobile viewport (Chrome DevTools device simulation)
-- Run `npm run lint` and `npm run build` before considering work complete
+- Unit tests live in `tests/unit/` (Vitest + Testing Library). Run them with
+  `npm run test:run`; coverage with `npm run test:coverage` (scope is
+  `coverage.include` in `vitest.config.mjs` — add files you test).
+- The build gate is `npm run build`. Do NOT use `npm run lint` as a gate:
+  there is no ESLint config, so `next lint` drops into an interactive setup
+  prompt and hangs non-interactive runs.
+- Manually test on mobile viewport (Chrome DevTools device simulation) —
+  this is a PWA.
 
 ### Common Patterns
 - Pages import from `context/userContext.jsx` via `useContext(UserContext)`
