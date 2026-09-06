@@ -7,7 +7,6 @@ import HelpButton from "../HelpButton";
 import Icon from "@mdi/react";
 import { mdiHelp } from "@mdi/js";
 import { useUserContext } from "../../context/userContext";
-import { Navbar } from "../Navbar";
 import MediaIcons from "../MediaIcons";
 
 export const Header = () => {
@@ -73,7 +72,6 @@ export const Header = () => {
                 <></>
             ) : (
                 <CustomHeader>
-                    <Navbar />
                     <Burger />
                     <MediaIcons />
                 </CustomHeader>

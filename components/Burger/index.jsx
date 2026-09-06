@@ -6,8 +6,6 @@ import { Dialog, ScrollView, Text, YStack } from "tamagui";
 import Profile from "../../public/icons/profile_white.svg";
 import emailIcon from "../../public/icons/email_white.svg";
 import Support from "../../public/icons/support_white.svg";
-import Movements from "../../public/icons/movements_white.svg";
-import Withdrawal from "../../public/icons/withdrawal_white.svg";
 import Help from "../../public/icons/help_white.svg";
 import Lightbulb from "../../public/icons/lightbulb_white.svg";
 import Invitations from "../../public/icons/invitations_white.svg";
@@ -76,19 +74,9 @@ function Burger({ newDesign = false, close = null, externalIsOpen = null }) {
         setIsReferralOpen(true);
     };
 
-    const handleMovementsClick = () => {
-        handleCloseModal();
-        router.push("/newMovements");
-    };
-
     const handleApiKeyClick = () => {
         handleCloseModal();
         router.push("/apiKey");
-    };
-
-    const handleWithdrawalClick = () => {
-        handleCloseModal();
-        router.push("/newWithdrawal");
     };
 
     return (
@@ -188,16 +176,6 @@ function Burger({ newDesign = false, close = null, externalIsOpen = null }) {
                                         icon={Invitations}
                                         label={"Invitations"}
                                         onPress={handleInvitationsClick}
-                                    />
-                                    <MenuRow
-                                        icon={Movements}
-                                        label={"Movements"}
-                                        onPress={handleMovementsClick}
-                                    />
-                                    <MenuRow
-                                        icon={Withdrawal}
-                                        label={"Withdrawal"}
-                                        onPress={handleWithdrawalClick}
                                     />
                                     <MenuRow
                                         icon={Lightbulb}
