@@ -41,12 +41,12 @@
         "router": "^2.2.0",
         "rsuite": "5.53.2",
         "sass": "^1.83.0",
-        "sharp": "^0.34.3",
+        "sharp": "^0.35.4",
         "styled-components": "5.3.11",
         "tamagui": "1.98.0"
     },
     "engines": {
-        "node": ">=20.0.0",
+        "node": ">=20.9.0",
         "npm": ">=10.0.0"
     },
     "devDependencies": {
