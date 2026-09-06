@@ -25,7 +25,7 @@ const initialState = {
 
 export default function Profile() {
     const router = useRouter();
-    const { user } = useUserContext();
+    const { user, getUser } = useUserContext();
     const [errorMessage, setErrorMessage] = useState(null);
     const [errorModalState, setErrorModalState] = useState(false);
     const [profile, setProfile] = useState(initialState);
@@ -53,6 +53,13 @@ export default function Profile() {
             }
         };
         fetchProfile();
+    }, []);
+
+    // /users/profile does not carry the lightning address (nor the email used
+    // by the password recovery link below), so pull /users/home into context.
+    // Nothing else on this route does it now that the global header is gone.
+    useEffect(() => {
+        getUser();
     }, []);
 
     const isDirty =
@@ -193,6 +200,22 @@ export default function Profile() {
                 paddingBottom={"$14"}
             >
                 <YStack gap={"$5"}>
+                    {user.lightningAddress ? (
+                        <YStack gap={"$2"}>
+                            <Paragraph color={"$neutral13"} fontSize={"$3"}>
+                                Lightning address
+                            </Paragraph>
+                            <Paragraph
+                                color={"$pink400"}
+                                fontWeight={"$2"}
+                                fontSize={"$3"}
+                                textAlign="center"
+                            >
+                                {user.lightningAddress}
+                            </Paragraph>
+                        </YStack>
+                    ) : null}
+
                     <YStack gap={"$2"}>
                         <TamaguiInput
                             label={"Username"}
