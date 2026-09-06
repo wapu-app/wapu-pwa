@@ -29,12 +29,22 @@ export const isAuthExpired = () => {
     return isJWTExpired({ token: token });
 };
 
+// Both auth cookies must be written with the same attributes: a mismatch
+// creates a second cookie instead of updating the existing one.
+// secure is read here, not at module scope, because this module is imported
+// by statically prerendered pages, where window does not exist.
+const authCookieOptions = () => ({
+    path: "/",
+    sameSite: "strict",
+    secure: window.location.protocol === "https:",
+    expires: 1,
+});
+
 // Shared across all concurrent callers so a burst of API calls hitting an
 // expired token triggers a single /users/refresh instead of one per request.
 let refreshPromise = null;
 
 const requestAccessTokenRefresh = async () => {
-    const secure = window.location.protocol === "https:";
     let response;
     try {
         response = await fetch(CONFIG.API.BASE_URL + "/users/refresh", {
@@ -54,27 +64,12 @@ const requestAccessTokenRefresh = async () => {
     }
 
     if (response.status === 200 && data && data.access_token) {
-        Cookies.set("access_token", data.access_token, {
-            path: "/",
-            sameSite: "strict",
-            secure: secure,
-            expires: 1,
-        });
-        Cookies.set("isLoggedIn", "true", {
-            path: "/",
-            sameSite: "strict",
-            secure: secure,
-            expires: 1,
-        });
+        Cookies.set("access_token", data.access_token, authCookieOptions());
+        Cookies.set("isLoggedIn", "true", authCookieOptions());
         return data.access_token;
     }
 
-    Cookies.set("isLoggedIn", false, {
-        path: "/",
-        sameSite: "strict",
-        secure: secure,
-        expires: 1,
-    });
+    Cookies.set("isLoggedIn", "false", authCookieOptions());
     Cookies.remove("access_token");
     return null;
 };
@@ -92,6 +87,11 @@ export const getAccessToken = async () => {
     const token = Cookies.get("access_token");
 
     if (!isJWTExpired({ token: token })) {
+        // The JWT can outlive the isLoggedIn marker (the marker expired on its
+        // own, or a page cleared it). Re-stamp it here, or the session gate in
+        // the layout and the hourly refresh keep reading a logged-out user
+        // while a valid token is in hand.
+        Cookies.set("isLoggedIn", "true", authCookieOptions());
         return token;
     }
 
