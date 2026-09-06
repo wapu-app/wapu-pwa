@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { LogoContainer } from "./styled";
-import { Spinner } from "../pix/styled";
+import Spinner from "../../components/CustomSpinner";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 

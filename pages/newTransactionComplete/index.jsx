@@ -35,6 +35,7 @@ export default function index() {
             );
         } else if (transaction_type === "send_digital") {
             setHeaderMessage("Send Digital Dollar");
+            setBodyMessage("Your transfer was completed successfully.");
         }
     }, [transaction_type]);
 

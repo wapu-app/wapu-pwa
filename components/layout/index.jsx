@@ -41,7 +41,6 @@ export const Layout = ({ children }) => {
     const showNav = [
         "/home",
         "/qrPayment",
-        "/pix",
         "/profile",
         "/innerTransfer",
     ];

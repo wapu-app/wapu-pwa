@@ -29,9 +29,6 @@ function send() {
     const [errorMessage, setErrorMessage] = useState(null);
     const [errorModalState, setErrorModalState] = useState(false);
     const [errorKYCModalState, setErrorKYCModalState] = useState(false);
-    const [confirmationMessage, setConfirmationMessage] = useState(
-        `${amount} USDT sent`
-    );
     const { user, helpModalState, setHelpModalState } = useUserContext();
 
     Modal.setAppElement("body");
@@ -54,9 +51,6 @@ function send() {
             setShowConfirmScreen(false);
         } else {
             setShowConfirmScreen(true);
-            setConfirmationMessage(
-                `${amount} USDT sent to ${receiverUsername}`
-            );
         }
     };
     const handleCancelSend = () => {
@@ -74,9 +68,13 @@ function send() {
             const { data, status } = await postInnerTransfer(payload);
 
             if (status === 200 || status === 201) {
-                router.push(
-                    `/transactionComplete?message=${confirmationMessage}&trx_id=${data.transaction_id}`
-                );
+                router.push({
+                    pathname: "/newTransactionComplete",
+                    query: {
+                        id: data.transaction_id,
+                        transaction_type: "send_digital",
+                    },
+                });
             } else {
                 throw new Error(
                     "Unexpected error. Please try again later or contact Support."
