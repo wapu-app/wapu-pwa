@@ -4,7 +4,6 @@ import { useRouter } from "next/router";
 import { useUserContext } from "../../context/userContext";
 import TamaguiInput from "../../components/TamaguiInput";
 import TamaguiButton from "../../components/TamaguiButton";
-import TamaguiCheckbox from "../../components/TamaguiCheckbox";
 import TamaguiLink from "../../components/TamaguiLink";
 import NewHeaderButton from "../../components/newHeaderButton";
 import ErrorModal from "../../components/ErrorModal";
@@ -22,7 +21,6 @@ const initialState = {
     npub: "",
     blockchain: "",
     email: "",
-    betaVersion: false,
 };
 
 export default function Profile() {
@@ -47,7 +45,6 @@ export default function Profile() {
                     npub: profileData.data.npub || "",
                     email: profileData.data.email || "",
                     blockchain: profileData.data.network || "",
-                    betaVersion: Boolean(profileData.data.beta_version),
                 };
                 setProfile(loadedProfile);
                 setSavedProfile(loadedProfile);
@@ -62,8 +59,7 @@ export default function Profile() {
         profile.username !== savedProfile.username ||
         profile.telegram !== savedProfile.telegram ||
         profile.phone !== savedProfile.phone ||
-        profile.npub !== savedProfile.npub ||
-        profile.betaVersion !== savedProfile.betaVersion;
+        profile.npub !== savedProfile.npub;
 
     const handleBack = () => {
         router.back();
@@ -113,10 +109,6 @@ export default function Profile() {
         setProfile((prev) => ({ ...prev, npub: value }));
     };
 
-    const handleBetaVersionToggle = () => {
-        setProfile((prev) => ({ ...prev, betaVersion: !prev.betaVersion }));
-    };
-
     const handleSave = async () => {
         if (usernameStatus === "taken") {
             setErrorMessage("Failed to update user profile");
@@ -132,14 +124,10 @@ export default function Profile() {
                 phone: profile.phone,
                 npub: profile.npub,
                 blockchain: profile.blockchain,
-                beta_version: profile.betaVersion ? "1" : "0",
             });
 
             if (response.status === 200) {
                 const updatedProfileData = response.data;
-                // PATCH /users/profile only echoes back username/telegram/phone/email;
-                // blockchain and beta_version are not part of its response, so keep
-                // the values we just submitted instead of overwriting them with undefined.
                 const nextProfile = {
                     ...profile,
                     username: updatedProfileData.username || "",
@@ -250,16 +238,6 @@ export default function Profile() {
                         autoCapitalize={"none"}
                         autoCorrect={false}
                         spellCheck={false}
-                    />
-
-                    <TamaguiCheckbox
-                        value={profile.betaVersion}
-                        // TamaguiCheckbox forwards unrecognized props straight to Tamagui's
-                        // Checkbox. Tamagui reads `checked` (not `value`) to render its visual
-                        // state, so without this the box always paints unchecked on first load.
-                        checked={profile.betaVersion}
-                        onClick={handleBetaVersionToggle}
-                        label={"Enable beta version"}
                     />
 
                     <XStack gap={"$2"} alignItems="center" flexWrap="wrap">

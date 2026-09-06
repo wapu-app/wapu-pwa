@@ -9,7 +9,8 @@ import NewHeaderButton from "../../components/newHeaderButton";
 export default function index() {
     const router = useRouter();
 
-    const { id, transaction_type } = router.query;
+    const { id, trx_id: legacyTransactionId, transaction_type } = router.query;
+    const transactionId = id || legacyTransactionId;
 
     const [headerMessage, setHeaderMessage] = useState("");
     const [bodyMessage, setBodyMessage] = useState("");
@@ -23,7 +24,7 @@ export default function index() {
     };
 
     const handleDetails = () => {
-        router.push("/newTransactionDetail?id=" + id + "&back=home");
+        router.push("/newTransactionDetail?id=" + transactionId + "&back=home");
     };
 
     useEffect(() => {
@@ -34,6 +35,7 @@ export default function index() {
             );
         } else if (transaction_type === "send_digital") {
             setHeaderMessage("Send Digital Dollar");
+            setBodyMessage("Your transfer was completed successfully.");
         }
     }, [transaction_type]);
 

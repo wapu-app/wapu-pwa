@@ -68,7 +68,6 @@ Node ≥ 20, npm ≥ 10 required.
 | `newWithdrawal/` | Withdrawal flow |
 | `innerTransfer/` | Internal transfer |
 | `qrPayment/` | QR code payment scanner |
-| `pix/` | PIX (Brazil) payment |
 | `newMovements/` | Transaction history |
 | `newTransactionDetail/` | Transaction detail view |
 | `newTransactionComplete/` | Post-transaction confirmation |

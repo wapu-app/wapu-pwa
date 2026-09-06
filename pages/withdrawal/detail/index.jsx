@@ -30,7 +30,7 @@ export default function index() {
             <Button
                 text={"Finish"}
                 onClick={() => {
-                    window.location.replace("/oldHome");
+                    window.location.replace("/home");
                 }}
             />
         </MainContainer>

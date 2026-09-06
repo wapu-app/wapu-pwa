@@ -21,10 +21,6 @@ const nextConfig = {
     async rewrites() {
         return [
             {
-                source: "/",
-                destination: "/home",
-            },
-            {
                 source: "/index",
                 destination: "/_index",
             },
@@ -55,6 +51,41 @@ const nextConfig = {
             {
                 source: "/signup",
                 destination: "/newSignUp",
+                permanent: true,
+            },
+            {
+                source: "/oldHome",
+                destination: "/home",
+                permanent: true,
+            },
+            {
+                source: "/deposit",
+                destination: "/newDepositChoice",
+                permanent: true,
+            },
+            {
+                source: "/send",
+                destination: "/newSend",
+                permanent: true,
+            },
+            {
+                source: "/movements",
+                destination: "/newMovements",
+                permanent: true,
+            },
+            {
+                source: "/withdrawal",
+                destination: "/newWithdrawal",
+                permanent: true,
+            },
+            {
+                source: "/transactionDetail",
+                destination: "/newTransactionDetail",
+                permanent: true,
+            },
+            {
+                source: "/transactionComplete",
+                destination: "/newTransactionComplete",
                 permanent: true,
             },
         ];

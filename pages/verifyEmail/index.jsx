@@ -67,7 +67,7 @@ export default function verifyEmail() {
     }, [router]);
 
     const backHome = () => {
-        router.push("/oldHome");
+        router.push("/home");
     };
 
     const sendVerificationCode = async (e) => {
@@ -94,7 +94,7 @@ export default function verifyEmail() {
     const handleCloseErrorModal = () => {
         setErrorModalState(false);
         if (verificationSent) {
-            router.push("/oldHome");
+            router.push("/home");
         }
     };
 

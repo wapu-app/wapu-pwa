@@ -28,7 +28,6 @@ import Link from "next/link";
 import userLogout from "../../utils/userLogout";
 
 export const Navbar = () => {
-    const [isOpen, setIsOpen] = useState(false);
     const [isReferralOpen, setIsReferralOpen] = useState(false);
     const [isEmailSendOpen, setIsEmailSendOpen] = useState(false);
     const [feedbackUrl, setFeedbackUrl] = useState("");
@@ -68,7 +67,7 @@ export const Navbar = () => {
     };
 
     const handleHome = () => {
-        router.push("/oldHome");
+        router.push("/home");
     };
 
     const handleLogout = () => {
@@ -87,7 +86,7 @@ export const Navbar = () => {
     return (
         <NavbarContainer>
             <NavbarLogo>
-                <Link href="/oldHome">
+                <Link href="/home">
                     <CustomIcon
                         width={140}
                         height={140}
@@ -105,9 +104,8 @@ export const Navbar = () => {
                         alt="Home"
                     />
                     <CustomLink
-                        href={"/oldHome"}
-                        onClick={() => setIsOpen(false)}
-                        style={activeStyles("/oldHome")}
+                        href={"/home"}
+                        style={activeStyles("/home")}
                     >
                         Home
                     </CustomLink>
@@ -122,7 +120,6 @@ export const Navbar = () => {
                         />
                         <CustomLink
                             href={"/profile"}
-                            onClick={() => setIsOpen(false)}
                             style={activeStyles("/profile")}
                         >
                             Profile
@@ -134,7 +131,6 @@ export const Navbar = () => {
                 <NavbarButton
                     onClick={() => {
                         if (user.kycStatus == "Incomplete") {
-                            setIsOpen(false);
                             router.push(externalKycUrl + "?username=" + encodeURIComponent(user.username));
                         }
                     }}
@@ -150,7 +146,6 @@ export const Navbar = () => {
 
                 <NavbarButton
                     onClick={() => {
-                        setIsOpen(false);
                         setIsReferralOpen(true);
                     }}
                 >
@@ -172,9 +167,8 @@ export const Navbar = () => {
                         alt="Movements"
                     />
                     <CustomLink
-                        href={"/movements"}
-                        onClick={() => setIsOpen(false)}
-                        style={activeStyles("/movements")}
+                        href={"/newMovements"}
+                        style={activeStyles("/newMovements")}
                     >
                         Movements
                     </CustomLink>
@@ -188,9 +182,8 @@ export const Navbar = () => {
                         alt="withdrawal"
                     />
                     <CustomLink
-                        href={"/withdrawal"}
-                        onClick={() => setIsOpen(false)}
-                        style={activeStyles("/withdrawal")}
+                        href={"/newWithdrawal"}
+                        style={activeStyles("/newWithdrawal")}
                     >
                         Withdrawal
                     </CustomLink>
@@ -204,7 +197,6 @@ export const Navbar = () => {
                     />
                     <CustomLink
                         href={feedbackUrl}
-                        onClick={() => setIsOpen(false)}
                         style={activeStyles("/feedback")}
                     >
                         Feedback
@@ -220,7 +212,6 @@ export const Navbar = () => {
                     />
                     <CustomLink
                         href={"https://wa.me/5491124060850"}
-                        onClick={() => setIsOpen(false)}
                     >
                         Support
                     </CustomLink>
@@ -240,7 +231,6 @@ export const Navbar = () => {
                     <CustomIcon width={20} height={20} src={Help} alt="Help" />
                     <CustomLink
                         href={"https://wapupay.com/#ayuda"}
-                        onClick={() => setIsOpen(false)}
                         target="_blank"
                     >
                         Help F.A.Q.

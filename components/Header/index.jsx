@@ -7,7 +7,6 @@ import HelpButton from "../HelpButton";
 import Icon from "@mdi/react";
 import { mdiHelp } from "@mdi/js";
 import { useUserContext } from "../../context/userContext";
-import { Navbar } from "../Navbar";
 import MediaIcons from "../MediaIcons";
 
 export const Header = () => {
@@ -22,7 +21,6 @@ export const Header = () => {
         "/resetPassword",
         "/verifyEmail",
         "/processing",
-        "/deposit",
         "/",
         "/login",
         "/newSignUp",
@@ -40,7 +38,7 @@ export const Header = () => {
         "/newBlockchainDeposit",
         "/bitcoinDeposit"
     ];
-    const helpButtonPath = ["/send", "/qrPayment"];
+    const helpButtonPath = ["/qrPayment"];
     useEffect(() => {
         if (hiddenPath.includes(pathname)) {
             setHeaderHidden(true);
@@ -74,7 +72,6 @@ export const Header = () => {
                 <></>
             ) : (
                 <CustomHeader>
-                    <Navbar />
                     <Burger />
                     <MediaIcons />
                 </CustomHeader>

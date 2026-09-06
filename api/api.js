@@ -434,26 +434,6 @@ export async function updateUserResidenceData(residenceData) {
     });
 }
 
-export async function sendPix(payload) {
-    const formData = new FormData();
-    Object.keys(payload).forEach((key) => formData.append(key, payload[key]));
-
-    const { data, status } = await apiRequest({
-        endpoint: "/wallet/pix_deposit",
-        method: "POST",
-        headers: {
-            "Access-Control-Allow-Origin": "*",
-        },
-        body: formData,
-    });
-
-    if (isOkStatus(status)) {
-        invalidate(CACHE_KEY.TRANSACTIONS);
-    }
-
-    return { data, status };
-}
-
 export async function getSettings() {
     return getOrFetch(
         CACHE_KEY.SETTINGS,

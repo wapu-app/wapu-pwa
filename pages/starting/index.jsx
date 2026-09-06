@@ -1,30 +1,39 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { LogoContainer } from "./styled";
-import { Spinner } from "../pix/styled";
+import Spinner from "../../components/CustomSpinner";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
-import { getSettings } from "../../api/api";
+import { getAccessToken, isAuthExpired } from "../../utils/auth";
 
 export default function Starting() {
     const route = useRouter();
-    const getDesignVersion = async () => {
-        const settings = await getSettings();
-        return settings;
-    };
+
     useEffect(() => {
-        getDesignVersion().then((settings) => { 
+        let isMounted = true;
+
+        const resolveDestination = async () => {
             if (Cookies.get("isLoggedIn") !== "true") {
-                setTimeout(() => {
-                    route.push(settings.webapp_design === "tamagui-1.0" ? "/newSignUp" : "/signup");
-                }, 1500);
+                route.replace("/newSignUp");
+                return;
             }
-            if (Cookies.get("isLoggedIn") === "true") {
-                setTimeout(() => {
-                    route.push(settings.webapp_design === "tamagui-1.0" ? "/home" : "/oldHome");
-                }, 1500);
+
+            if (!isAuthExpired()) {
+                route.replace("/home");
+                return;
             }
-        });
-    }, []);
+
+            const accessToken = await getAccessToken();
+            if (isMounted) {
+                route.replace(accessToken ? "/home" : "/newSignUp");
+            }
+        };
+
+        resolveDestination();
+        return () => {
+            isMounted = false;
+        };
+    }, [route]);
+
     return (
         <LogoContainer className="logo">
             <Spinner />
