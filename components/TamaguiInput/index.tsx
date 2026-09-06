@@ -9,6 +9,7 @@ export default function TamaguiInput({
     placeholder,
     label,
     icon,
+    iconSlot,
     onFocusChange,
     error,
     onPressIcon,
@@ -80,7 +81,11 @@ export default function TamaguiInput({
                     }}
                     {...props}
                 />
-                {icon ? (
+                {iconSlot ? (
+                    <XStack alignItems="center" paddingRight={"$3"}>
+                        {iconSlot}
+                    </XStack>
+                ) : icon ? (
                     <Button
                         onPress={onPressIcon}
                         backgroundColor={"$transparent"}
