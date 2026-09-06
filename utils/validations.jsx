@@ -3,6 +3,10 @@ export const isValidAmount = (amountValue) => {
 };
 
 export const isAnAuthablePage = (pathname) => {
+    if (!pathname) {
+        return false;
+    }
+
     const noAuthRequiredPaths = [
         "/signup",
         "/recoverPassword",

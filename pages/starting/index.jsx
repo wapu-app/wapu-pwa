@@ -3,15 +3,37 @@ import { LogoContainer } from "./styled";
 import Spinner from "../../components/CustomSpinner";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
+import { getAccessToken, isAuthExpired } from "../../utils/auth";
 
 export default function Starting() {
     const route = useRouter();
+
     useEffect(() => {
-        const destination =
-            Cookies.get("isLoggedIn") === "true" ? "/home" : "/newSignUp";
-        const timeout = setTimeout(() => route.push(destination), 1500);
-        return () => clearTimeout(timeout);
-    }, []);
+        let isMounted = true;
+
+        const resolveDestination = async () => {
+            if (Cookies.get("isLoggedIn") !== "true") {
+                route.replace("/newSignUp");
+                return;
+            }
+
+            if (!isAuthExpired()) {
+                route.replace("/home");
+                return;
+            }
+
+            const accessToken = await getAccessToken();
+            if (isMounted) {
+                route.replace(accessToken ? "/home" : "/newSignUp");
+            }
+        };
+
+        resolveDestination();
+        return () => {
+            isMounted = false;
+        };
+    }, [route]);
+
     return (
         <LogoContainer className="logo">
             <Spinner />

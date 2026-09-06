@@ -21,10 +21,6 @@ const nextConfig = {
     async rewrites() {
         return [
             {
-                source: "/",
-                destination: "/home",
-            },
-            {
                 source: "/index",
                 destination: "/_index",
             },

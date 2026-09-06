@@ -3,6 +3,18 @@ import { describe, expect, it } from "vitest";
 const nextConfig = require("../../next.config");
 
 describe("legacy route redirects", () => {
+    it("leaves the root route to the client session gate", async () => {
+        const redirects = await nextConfig.redirects();
+        const rewrites = await nextConfig.rewrites();
+
+        expect(redirects).not.toEqual(
+            expect.arrayContaining([expect.objectContaining({ source: "/" })]),
+        );
+        expect(rewrites).not.toEqual(
+            expect.arrayContaining([expect.objectContaining({ source: "/" })]),
+        );
+    });
+
     it("permanently maps retired routes to their Tamagui replacements", async () => {
         const redirects = await nextConfig.redirects();
         const routes = Object.fromEntries(
