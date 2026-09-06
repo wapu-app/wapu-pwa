@@ -40,7 +40,11 @@ export const Layout = ({ children }) => {
     const pathnameRef = useRef(pathname);
     pathnameRef.current = pathname;
     const refreshIntervalRef = useRef(null);
-    const isAuthable = isAnAuthablePage(pathname);
+    // "/" renders <Starting/>, the entry router that sends the visitor to
+    // /home or /newSignUp on its own. Gating it here would redirect before it
+    // can decide, so it is excluded from the session gate.
+    const isEntryRoute = pathname === "/";
+    const isAuthable = isAnAuthablePage(pathname) && !isEntryRoute;
     const sessionNeedsRestore =
         isAuthable &&
         (Cookies.get("isLoggedIn") !== "true" || isAuthExpired());
@@ -85,7 +89,9 @@ export const Layout = ({ children }) => {
                 return;
             }
             if (!token) {
-                router.replace("/login");
+                // /newSignUp is the entry point for visitors without a
+                // session: it offers sign-up, login and magic-link access.
+                router.replace("/newSignUp");
                 return;
             }
             setRestoredPathname(pathname);
@@ -116,7 +122,7 @@ export const Layout = ({ children }) => {
                 return;
             }
             if (!token) {
-                router.replace("/login");
+                router.replace("/newSignUp");
                 return;
             }
         };

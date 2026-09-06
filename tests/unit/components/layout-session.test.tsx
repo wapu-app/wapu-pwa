@@ -68,15 +68,31 @@ describe("Layout session lifecycle", () => {
         expect(screen.getByText("Protected content")).toBeInTheDocument();
     });
 
-    it("redirects to login when protected-route recovery fails", async () => {
+    it("redirects to signup when protected-route recovery fails", async () => {
         mockedCookiesGet.mockReturnValue(undefined);
         mockedRefreshAccessToken.mockResolvedValue(null);
 
         render(<Layout>Protected content</Layout>);
 
         await waitFor(() => {
-            expect(mocks.replace).toHaveBeenCalledWith("/login");
+            expect(mocks.replace).toHaveBeenCalledWith("/newSignUp");
         });
+    });
+
+    it("lets the entry route resolve its own destination instead of forcing an auth redirect", async () => {
+        mocks.pathname = "/";
+        mockedCookiesGet.mockReturnValue(undefined);
+        mockedRefreshAccessToken.mockResolvedValue(null);
+
+        render(<Layout>Entry content</Layout>);
+
+        await act(async () => {});
+
+        // "/" renders <Starting/>, which picks /home or /newSignUp on its own.
+        // Layout must not gate it, or the visitor never reaches that decision.
+        expect(screen.getByText("Entry content")).toBeInTheDocument();
+        expect(mockedRefreshAccessToken).not.toHaveBeenCalled();
+        expect(mocks.replace).not.toHaveBeenCalled();
     });
 
     it("does not mount protected content while session recovery is pending", () => {
