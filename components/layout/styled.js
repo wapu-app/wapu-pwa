@@ -101,6 +101,17 @@ export const PrincipalContainer = styled.div`
     }
 `;
 
+export const SessionRecovery = styled.div`
+    min-height: 100dvh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: white;
+`;
+
 export const CustomMain = styled.main`
     height: 100%;
     width: 100%;

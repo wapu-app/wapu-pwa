@@ -8,21 +8,31 @@ import {
     CustomMain,
     HiddenNavigation,
     LogoContainer,
+    SessionRecovery,
 } from "./styled";
 import Cookies from "js-cookie";
 import { useUserContext } from "../../context/userContext";
 import CONFIG from "../../config/environment/current";
-import { isAuthExpired, getAccessToken } from "../../utils/auth";
+import {
+    getAccessToken,
+    isAuthExpired,
+    refreshAccessToken,
+} from "../../utils/auth";
 import HelpModal from "../HelpModal";
 import { isAnAuthablePage } from "../../utils/validations";
 import NewNavigation from "../NewFooterNavigation/NewFooterNavigation";
+import Spinner from "../CustomSpinner";
 
 export const Layout = ({ children }) => {
-    const CHECK_AUTH_TOKEN_INTERVAL = 5000;
+    const REFRESH_TOKEN_INTERVAL = 60 * 60 * 1000;
     const [navHidden, setNavHidden] = useState(false);
     const [logoHidden, setLogoHidden] = useState(false);
     const pathname = usePathname();
-    const [authToken, setAuthToken] = useState(Cookies.get("isLoggedIn"));
+    const [restoredPathname, setRestoredPathname] = useState(null);
+    // The session check below reads cookies, which only exist in the browser.
+    // Gate it behind mount so the first client render matches the server HTML
+    // and hydration does not fail.
+    const [hasMounted, setHasMounted] = useState(false);
     const {
         setHelpModalState,
         helpModalState,
@@ -31,12 +41,20 @@ export const Layout = ({ children }) => {
     } = useUserContext();
     const router = useRouter();
 
-    // The auth-check interval is created once (below) and must read the live
-    // pathname, so mirror it into a ref instead of recreating the interval on
-    // every navigation.
     const pathnameRef = useRef(pathname);
-    pathnameRef.current = pathname;
-    const checkAuthIntervalRef = useRef(null);
+    const refreshIntervalRef = useRef(null);
+    // "/" renders <Starting/>, the entry router that sends the visitor to
+    // /home or /newSignUp on its own. Gating it here would redirect before it
+    // can decide, so it is excluded from the session gate.
+    const isEntryRoute = pathname === "/";
+    const isAuthable = isAnAuthablePage(pathname) && !isEntryRoute;
+    const sessionNeedsRestore =
+        isAuthable &&
+        (Cookies.get("isLoggedIn") !== "true" || isAuthExpired());
+    const canRenderProtectedContent =
+        !isAuthable ||
+        (hasMounted &&
+            (!sessionNeedsRestore || restoredPathname === pathname));
 
     const showNav = [
         "/home",
@@ -55,43 +73,82 @@ export const Layout = ({ children }) => {
     ];
 
     useEffect(() => {
-        if (Cookies.get("isLoggedIn") === "true" || !isAnAuthablePage(pathname)) {
-            return;
-        }
-        router.push("/newSignUp");
-    }, [authToken, pathname]);
+        setHasMounted(true);
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const restoreSession = async () => {
+            if (!isAuthable) {
+                return;
+            }
+            if (!sessionNeedsRestore) {
+                return;
+            }
+
+            // getAccessToken is cookie-first: a valid access_token short-circuits
+            // without a network round trip (e.g. the isLoggedIn marker was lost
+            // but the JWT is still fresh); otherwise it runs the deduped refresh.
+            const token = await getAccessToken();
+            if (cancelled) {
+                return;
+            }
+            if (!token) {
+                // /newSignUp is the entry point for visitors without a
+                // session: it offers sign-up, login and magic-link access.
+                router.replace("/newSignUp");
+                return;
+            }
+            setRestoredPathname(pathname);
+        };
+
+        restoreSession();
+        return () => {
+            cancelled = true;
+        };
+        // sessionNeedsRestore is in the deps because the token can expire while
+        // the page stays mounted: the gate then closes on the next re-render,
+        // and this effect must re-run to refresh and re-open it.
+    }, [pathname, sessionNeedsRestore]);
 
     useEffect(() => {
         setNavHidden(!showNav.includes(pathname));
         setLogoHidden(!showLogo.includes(pathname));
     }, [pathname]);
 
+    // The hourly interval below subscribes once and reads this ref instead of
+    // the pathname, so the timer survives navigation. Writing it after commit
+    // keeps render free of side effects.
     useEffect(() => {
-        const checkAuth = async () => {
-            // Anonymous visitors have no session to refresh; skip so we don't
-            // poll /users/refresh every few seconds for logged-out users.
+        pathnameRef.current = pathname;
+    }, [pathname]);
+
+    useEffect(() => {
+        const refreshSession = async () => {
             if (Cookies.get("isLoggedIn") !== "true") {
                 return;
             }
-            if (isAnAuthablePage(pathnameRef.current) && isAuthExpired()) {
-                const token = await getAccessToken();
-                if (!token) {
-                    // Refresh failed mid-session: a returning user has an
-                    // account, so send them to login rather than sign-up.
-                    router.replace("/login");
-                    return;
-                }
-                setAuthToken(Cookies.get("isLoggedIn"));
+            if (!isAnAuthablePage(pathnameRef.current)) {
+                return;
+            }
+
+            const token = await refreshAccessToken();
+            if (!isAnAuthablePage(pathnameRef.current)) {
+                return;
+            }
+            if (!token) {
+                router.replace("/newSignUp");
+                return;
             }
         };
-        checkAuthIntervalRef.current = setInterval(
-            checkAuth,
-            CHECK_AUTH_TOKEN_INTERVAL
+        refreshIntervalRef.current = setInterval(
+            refreshSession,
+            REFRESH_TOKEN_INTERVAL
         );
         return () => {
-            clearInterval(checkAuthIntervalRef.current);
+            clearInterval(refreshIntervalRef.current);
         };
-        // Created once on mount; reads the live pathname via pathnameRef.
     }, []);
 
     const whatsappMessage = `Hi, I need to top up my Wapu account through Wise, Pix or a bank transfer. My user is ${user.username}`;
@@ -123,29 +180,38 @@ export const Layout = ({ children }) => {
             ) : (
                 <></>
             )}
-            <Header />
-            <CustomMain>
-                <HelpModal
-                    message={helpModalMessage}
-                    state={helpModalState}
-                    helpModalOnRequestClose={() => {
-                        setHelpModalState(false);
-                    }}
-                />
-                {logoHidden ? (
-                    <></>
-                ) : (
-                    <LogoContainer className="logo">
-                        <Image src={Logo} width={150} alt="Wapu logo" />
-                    </LogoContainer>
-                )}
-                {children}
-                {navHidden ? (
-                    <HiddenNavigation />
-                ) : (
-                    <NewNavigation />
-                )}
-            </CustomMain>
+            {canRenderProtectedContent ? (
+                <>
+                    <Header />
+                    <CustomMain>
+                        <HelpModal
+                            message={helpModalMessage}
+                            state={helpModalState}
+                            helpModalOnRequestClose={() => {
+                                setHelpModalState(false);
+                            }}
+                        />
+                        {logoHidden ? (
+                            <></>
+                        ) : (
+                            <LogoContainer className="logo">
+                                <Image src={Logo} width={150} alt="Wapu logo" />
+                            </LogoContainer>
+                        )}
+                        {children}
+                        {navHidden ? (
+                            <HiddenNavigation />
+                        ) : (
+                            <NewNavigation />
+                        )}
+                    </CustomMain>
+                </>
+            ) : (
+                <SessionRecovery role="status" aria-live="polite">
+                    <Spinner />
+                    <span>Restoring your session…</span>
+                </SessionRecovery>
+            )}
         </PrincipalContainer>
     );
 };

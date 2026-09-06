@@ -111,6 +111,19 @@ UI building blocks. Naming convention: `PascalCase` directories, each containing
 
 ## For AI Agents
 
+### Git & Pull Requests
+- **Always open pull requests against `develop`.** Never against `main`. `develop` is the
+  repository default branch on GitHub; `main` is the production line and receives changes
+  from `develop`, not from feature branches.
+- Branch off `develop` and keep the branch on `develop`.
+- **Do not merge `main` into a feature branch.** It drags `main`-only commits into the PR
+  diff, which makes `main` look like the correct base and hides the real change. If the
+  branch is stale, rebase on `develop` or merge `develop` in.
+- With `gh`, the base is explicit: `gh pr create --base develop`.
+- **Write commit messages and pull requests in Spanish.** Subject in the imperative
+  ("Corregir…", "Agregar…", "Remover…"), matching the existing history. Code, identifiers,
+  and this documentation stay in English.
+
 ### Working Here
 - Add new routes as subdirectories under `pages/` following the existing pattern.
 - New reusable UI → `components/`, preferring Tamagui components for new work.
@@ -124,9 +137,14 @@ UI building blocks. Naming convention: `PascalCase` directories, each containing
 - Do not mix styling systems within the same component
 
 ### Testing Requirements
-- No automated frontend test suite currently
-- Manually test on mobile viewport (Chrome DevTools device simulation)
-- Run `npm run lint` and `npm run build` before considering work complete
+- Unit tests live in `tests/unit/` (Vitest + Testing Library). Run them with
+  `npm run test:run`; coverage with `npm run test:coverage` (scope is
+  `coverage.include` in `vitest.config.mjs` — add files you test).
+- The build gate is `npm run build`. Do NOT use `npm run lint` as a gate:
+  there is no ESLint config, so `next lint` drops into an interactive setup
+  prompt and hangs non-interactive runs.
+- Manually test on mobile viewport (Chrome DevTools device simulation) —
+  this is a PWA.
 
 ### Common Patterns
 - Pages import from `context/userContext.jsx` via `useContext(UserContext)`
