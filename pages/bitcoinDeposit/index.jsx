@@ -293,6 +293,17 @@ export default function BitcoinDeposit() {
                         Send SAT via Lightning Network
                     </H6>
 
+                    {user.lightningAddress ? (
+                        <Paragraph
+                            color={"$pink400"}
+                            fontWeight={"$2"}
+                            fontSize={"$3"}
+                            textAlign="center"
+                        >
+                            {user.lightningAddress}
+                        </Paragraph>
+                    ) : null}
+
                     <XStack
                         justifyContent="space-between"
                         alignItems="center"
