@@ -24,6 +24,7 @@ export default defineConfig({
                 "components/CopyButton/index.tsx",
                 "components/layout/index.jsx",
                 "components/Header/index.jsx",
+                "components/Referral/referral.jsx",
                 "hooks/useAmountNumpad.jsx",
                 "utils/auth.jsx",
                 "utils/exchangeCalculator.js",
