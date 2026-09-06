@@ -8,21 +8,23 @@ import {
     CustomMain,
     HiddenNavigation,
     LogoContainer,
+    SessionRecovery,
 } from "./styled";
 import Cookies from "js-cookie";
 import { useUserContext } from "../../context/userContext";
 import CONFIG from "../../config/environment/current";
-import { isAuthExpired, getAccessToken } from "../../utils/auth";
+import { isAuthExpired, refreshAccessToken } from "../../utils/auth";
 import HelpModal from "../HelpModal";
 import { isAnAuthablePage } from "../../utils/validations";
 import NewNavigation from "../NewFooterNavigation/NewFooterNavigation";
+import Spinner from "../CustomSpinner";
 
 export const Layout = ({ children }) => {
-    const CHECK_AUTH_TOKEN_INTERVAL = 5000;
+    const REFRESH_TOKEN_INTERVAL = 60 * 60 * 1000;
     const [navHidden, setNavHidden] = useState(false);
     const [logoHidden, setLogoHidden] = useState(false);
     const pathname = usePathname();
-    const [authToken, setAuthToken] = useState(Cookies.get("isLoggedIn"));
+    const [restoredPathname, setRestoredPathname] = useState(null);
     const {
         setHelpModalState,
         helpModalState,
@@ -31,12 +33,14 @@ export const Layout = ({ children }) => {
     } = useUserContext();
     const router = useRouter();
 
-    // The auth-check interval is created once (below) and must read the live
-    // pathname, so mirror it into a ref instead of recreating the interval on
-    // every navigation.
     const pathnameRef = useRef(pathname);
     pathnameRef.current = pathname;
-    const checkAuthIntervalRef = useRef(null);
+    const refreshIntervalRef = useRef(null);
+    const sessionNeedsRestore =
+        isAnAuthablePage(pathname) &&
+        (Cookies.get("isLoggedIn") !== "true" || isAuthExpired());
+    const canRenderProtectedContent =
+        !sessionNeedsRestore || restoredPathname === pathname;
 
     const showNav = [
         "/home",
@@ -55,11 +59,32 @@ export const Layout = ({ children }) => {
     ];
 
     useEffect(() => {
-        if (Cookies.get("isLoggedIn") === "true" || !isAnAuthablePage(pathname)) {
-            return;
-        }
-        router.push("/newSignUp");
-    }, [authToken, pathname]);
+        let cancelled = false;
+
+        const restoreSession = async () => {
+            if (!isAnAuthablePage(pathname)) {
+                return;
+            }
+            if (!sessionNeedsRestore) {
+                return;
+            }
+
+            const token = await refreshAccessToken();
+            if (cancelled) {
+                return;
+            }
+            if (!token) {
+                router.replace("/login");
+                return;
+            }
+            setRestoredPathname(pathname);
+        };
+
+        restoreSession();
+        return () => {
+            cancelled = true;
+        };
+    }, [pathname]);
 
     useEffect(() => {
         setNavHidden(!showNav.includes(pathname));
@@ -67,31 +92,30 @@ export const Layout = ({ children }) => {
     }, [pathname]);
 
     useEffect(() => {
-        const checkAuth = async () => {
-            // Anonymous visitors have no session to refresh; skip so we don't
-            // poll /users/refresh every few seconds for logged-out users.
+        const refreshSession = async () => {
             if (Cookies.get("isLoggedIn") !== "true") {
                 return;
             }
-            if (isAnAuthablePage(pathnameRef.current) && isAuthExpired()) {
-                const token = await getAccessToken();
-                if (!token) {
-                    // Refresh failed mid-session: a returning user has an
-                    // account, so send them to login rather than sign-up.
-                    router.replace("/login");
-                    return;
-                }
-                setAuthToken(Cookies.get("isLoggedIn"));
+            if (!isAnAuthablePage(pathnameRef.current)) {
+                return;
+            }
+
+            const token = await refreshAccessToken();
+            if (!isAnAuthablePage(pathnameRef.current)) {
+                return;
+            }
+            if (!token) {
+                router.replace("/login");
+                return;
             }
         };
-        checkAuthIntervalRef.current = setInterval(
-            checkAuth,
-            CHECK_AUTH_TOKEN_INTERVAL
+        refreshIntervalRef.current = setInterval(
+            refreshSession,
+            REFRESH_TOKEN_INTERVAL
         );
         return () => {
-            clearInterval(checkAuthIntervalRef.current);
+            clearInterval(refreshIntervalRef.current);
         };
-        // Created once on mount; reads the live pathname via pathnameRef.
     }, []);
 
     const whatsappMessage = `Hi, I need to top up my Wapu account through Wise, Pix or a bank transfer. My user is ${user.username}`;
@@ -123,29 +147,38 @@ export const Layout = ({ children }) => {
             ) : (
                 <></>
             )}
-            <Header />
-            <CustomMain>
-                <HelpModal
-                    message={helpModalMessage}
-                    state={helpModalState}
-                    helpModalOnRequestClose={() => {
-                        setHelpModalState(false);
-                    }}
-                />
-                {logoHidden ? (
-                    <></>
-                ) : (
-                    <LogoContainer className="logo">
-                        <Image src={Logo} width={150} alt="Wapu logo" />
-                    </LogoContainer>
-                )}
-                {children}
-                {navHidden ? (
-                    <HiddenNavigation />
-                ) : (
-                    <NewNavigation />
-                )}
-            </CustomMain>
+            {canRenderProtectedContent ? (
+                <>
+                    <Header />
+                    <CustomMain>
+                        <HelpModal
+                            message={helpModalMessage}
+                            state={helpModalState}
+                            helpModalOnRequestClose={() => {
+                                setHelpModalState(false);
+                            }}
+                        />
+                        {logoHidden ? (
+                            <></>
+                        ) : (
+                            <LogoContainer className="logo">
+                                <Image src={Logo} width={150} alt="Wapu logo" />
+                            </LogoContainer>
+                        )}
+                        {children}
+                        {navHidden ? (
+                            <HiddenNavigation />
+                        ) : (
+                            <NewNavigation />
+                        )}
+                    </CustomMain>
+                </>
+            ) : (
+                <SessionRecovery role="status" aria-live="polite">
+                    <Spinner />
+                    <span>Restoring your session…</span>
+                </SessionRecovery>
+            )}
         </PrincipalContainer>
     );
 };

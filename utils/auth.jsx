@@ -33,7 +33,7 @@ export const isAuthExpired = () => {
 // expired token triggers a single /users/refresh instead of one per request.
 let refreshPromise = null;
 
-const refreshAccessToken = async () => {
+const requestAccessTokenRefresh = async () => {
     const secure = window.location.protocol === "https:";
     let response;
     try {
@@ -60,6 +60,12 @@ const refreshAccessToken = async () => {
             secure: secure,
             expires: 1,
         });
+        Cookies.set("isLoggedIn", "true", {
+            path: "/",
+            sameSite: "strict",
+            secure: secure,
+            expires: 1,
+        });
         return data.access_token;
     }
 
@@ -73,6 +79,15 @@ const refreshAccessToken = async () => {
     return null;
 };
 
+export const refreshAccessToken = async () => {
+    if (!refreshPromise) {
+        refreshPromise = requestAccessTokenRefresh().finally(() => {
+            refreshPromise = null;
+        });
+    }
+    return refreshPromise;
+};
+
 export const getAccessToken = async () => {
     const token = Cookies.get("access_token");
 
@@ -80,10 +95,5 @@ export const getAccessToken = async () => {
         return token;
     }
 
-    if (!refreshPromise) {
-        refreshPromise = refreshAccessToken().finally(() => {
-            refreshPromise = null;
-        });
-    }
-    return refreshPromise;
+    return refreshAccessToken();
 };

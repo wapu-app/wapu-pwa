@@ -12,12 +12,7 @@ export default function Starting() {
         let isMounted = true;
 
         const resolveDestination = async () => {
-            if (Cookies.get("isLoggedIn") !== "true") {
-                route.replace("/newSignUp");
-                return;
-            }
-
-            if (!isAuthExpired()) {
+            if (Cookies.get("isLoggedIn") === "true" && !isAuthExpired()) {
                 route.replace("/home");
                 return;
             }

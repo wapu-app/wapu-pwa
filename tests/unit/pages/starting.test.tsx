@@ -34,15 +34,27 @@ describe("Starting", () => {
         mockedIsAuthExpired.mockReset();
     });
 
-    it("routes an anonymous visitor to signup", async () => {
+    it("attempts refresh before sending a visitor without a local marker to signup", async () => {
         mockedCookiesGet.mockReturnValue(undefined);
+        mockedGetAccessToken.mockResolvedValue(null);
 
         render(<Starting />);
 
         await waitFor(() => {
             expect(mocks.replace).toHaveBeenCalledWith("/newSignUp");
         });
-        expect(mockedGetAccessToken).not.toHaveBeenCalled();
+        expect(mockedGetAccessToken).toHaveBeenCalledOnce();
+    });
+
+    it("restores a returning visitor without a local marker when refresh succeeds", async () => {
+        mockedCookiesGet.mockReturnValue(undefined);
+        mockedGetAccessToken.mockResolvedValue("refreshed-token");
+
+        render(<Starting />);
+
+        await waitFor(() => {
+            expect(mocks.replace).toHaveBeenCalledWith("/home");
+        });
     });
 
     it("routes a visitor with a valid access token home", async () => {
