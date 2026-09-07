@@ -21,6 +21,7 @@ export default defineConfig({
             reportsDirectory: "coverage",
             include: [
                 "components/Tamagui*/index.{js,jsx,ts,tsx}",
+                "components/CopyButton/index.tsx",
                 "components/layout/index.jsx",
                 "hooks/useAmountNumpad.jsx",
                 "utils/auth.jsx",

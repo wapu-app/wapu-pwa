@@ -4,9 +4,8 @@ import { YStack, XStack, Paragraph, Text } from "tamagui";
 import moment from "moment";
 import NewHeaderButton from "../../components/newHeaderButton";
 import TamaguiButton from "../../components/TamaguiButton";
-import TamaguiIconButton from "../../components/TamaguiIconButton";
+import CopyButton from "../../components/CopyButton";
 import { Spinner } from "../../components/CustomSpinner";
-import CopyIcon from "../../public/copy_icon.svg";
 import {
     getApiTokenStatus,
     generateApiToken,
@@ -23,7 +22,6 @@ export default function ApiKey() {
     const [generatedToken, setGeneratedToken] = useState(null);
     const [notEnabled, setNotEnabled] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null); // "regenerate" | "delete"
-    const [copied, setCopied] = useState(false);
     const [error, setError] = useState(null);
 
     const loadStatus = async () => {
@@ -88,23 +86,12 @@ export default function ApiKey() {
     };
 
     const handleRevealDone = async () => {
-        setCopied(false);
         setError(null);
         setGeneratedToken(null);
         try {
             await loadStatus();
         } catch (e) {
             setError("Couldn't refresh your API key status. Please try again.");
-        }
-    };
-
-    const handleCopy = async () => {
-        try {
-            await navigator.clipboard.writeText(generatedToken);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        } catch (e) {
-            setError("Couldn't copy to clipboard. Please copy it manually.");
         }
     };
 
@@ -172,10 +159,14 @@ export default function ApiKey() {
                             >
                                 {generatedToken}
                             </Paragraph>
-                            <TamaguiIconButton
-                                icon={CopyIcon}
-                                onClick={handleCopy}
-                                label={copied ? "Copied" : "Copy"}
+                            <CopyButton
+                                value={generatedToken}
+                                onError={() =>
+                                    setError(
+                                        "Couldn't copy to clipboard. Please copy it manually."
+                                    )
+                                }
+                                label="Copy"
                                 colorLabel="$neutral13"
                                 fontSizeLabel="$1"
                                 gap="$1"
