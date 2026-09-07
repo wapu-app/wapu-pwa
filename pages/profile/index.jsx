@@ -177,6 +177,12 @@ export default function Profile() {
         isSaving ||
         usernameStatus === "taken" ||
         usernameStatus === "checking";
+    const lightningAddress =
+        user.lightningAddress?.includes("@") && profile.username
+            ? `${profile.username}${user.lightningAddress.slice(
+                  user.lightningAddress.indexOf("@")
+              )}`
+            : user.lightningAddress;
 
     return (
         <YStack
@@ -200,9 +206,13 @@ export default function Profile() {
                 paddingBottom={"$14"}
             >
                 <YStack gap={"$5"}>
-                    {user.lightningAddress ? (
+                    {lightningAddress ? (
                         <YStack gap={"$2"}>
-                            <Paragraph color={"$neutral13"} fontSize={"$3"}>
+                            <Paragraph
+                                color={"$neutral13"}
+                                fontSize={"$3"}
+                                fontWeight={"$2"}
+                            >
                                 Lightning address
                             </Paragraph>
                             <Paragraph
@@ -211,7 +221,7 @@ export default function Profile() {
                                 fontSize={"$3"}
                                 textAlign="center"
                             >
-                                {user.lightningAddress}
+                                {lightningAddress}
                             </Paragraph>
                         </YStack>
                     ) : null}

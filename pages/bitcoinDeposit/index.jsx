@@ -290,7 +290,7 @@ export default function BitcoinDeposit() {
                     alignContent="center"
                 >
                     <H6 color={"$neutral13"} textAlign="center">
-                        Send SAT via Lightning Network
+                        Lightning Address
                     </H6>
 
                     {user.lightningAddress ? (
