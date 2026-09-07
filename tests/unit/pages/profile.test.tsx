@@ -1,5 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Profile from "../../../pages/profile";
 import {
@@ -31,18 +32,24 @@ vi.mock("../../../components/TamaguiInput", () => ({
         label,
         onChange,
         value,
+        editable,
+        iconSlot,
     }: {
         readonly label?: string;
         readonly onChange: (value: string) => void;
         readonly value: string;
+        readonly editable?: boolean;
+        readonly iconSlot?: ReactNode;
     }) => (
         <label>
             {label}
             <input
                 aria-label={label}
                 onChange={(event) => onChange(event.currentTarget.value)}
+                readOnly={editable === false}
                 value={value}
             />
+            {iconSlot}
         </label>
     ),
 }));
@@ -99,6 +106,19 @@ describe("Profile", () => {
         await user.clear(screen.getByLabelText("Username"));
         await user.type(screen.getByLabelText("Username"), "nakamoto");
 
-        expect(screen.getByText("nakamoto@wapu.app")).toBeVisible();
+        expect(screen.getByLabelText("Lightning address")).toHaveValue(
+            "nakamoto@wapu.app"
+        );
+    });
+
+    it("renders the Lightning Address in a read-only textbox", async () => {
+        renderWithTamagui(<Profile />);
+
+        await waitFor(() => {
+            expect(screen.getByLabelText("Lightning address")).toHaveAttribute(
+                "readonly"
+            );
+        });
+        expect(screen.getByRole("button", { name: "Copy" })).toBeVisible();
     });
 });

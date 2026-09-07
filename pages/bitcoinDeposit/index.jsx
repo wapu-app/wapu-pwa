@@ -294,14 +294,15 @@ export default function BitcoinDeposit() {
                     </H6>
 
                     {user.lightningAddress ? (
-                        <Paragraph
-                            color={"$pink400"}
-                            fontWeight={"$2"}
-                            fontSize={"$3"}
+                        <TamaguiInput
+                            value={user.lightningAddress}
+                            editable={false}
+                            color={"$neutral12"}
+                            iconSlot={
+                                <CopyButton value={user.lightningAddress} />
+                            }
                             textAlign="center"
-                        >
-                            {user.lightningAddress}
-                        </Paragraph>
+                        />
                     ) : null}
 
                     <XStack

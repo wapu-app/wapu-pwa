@@ -7,6 +7,7 @@ import TamaguiButton from "../../components/TamaguiButton";
 import TamaguiLink from "../../components/TamaguiLink";
 import NewHeaderButton from "../../components/newHeaderButton";
 import ErrorModal from "../../components/ErrorModal";
+import CopyButton from "../../components/CopyButton";
 import {
     getProfile,
     sendRecoverPasswordEmail,
@@ -207,23 +208,14 @@ export default function Profile() {
             >
                 <YStack gap={"$5"}>
                     {lightningAddress ? (
-                        <YStack gap={"$2"}>
-                            <Paragraph
-                                color={"$neutral13"}
-                                fontSize={"$3"}
-                                fontWeight={"$2"}
-                            >
-                                Lightning address
-                            </Paragraph>
-                            <Paragraph
-                                color={"$pink400"}
-                                fontWeight={"$2"}
-                                fontSize={"$3"}
-                                textAlign="center"
-                            >
-                                {lightningAddress}
-                            </Paragraph>
-                        </YStack>
+                        <TamaguiInput
+                            label={"Lightning address"}
+                            value={lightningAddress}
+                            editable={false}
+                            color={"$neutral12"}
+                            iconSlot={<CopyButton value={lightningAddress} />}
+                            textAlign="left"
+                        />
                     ) : null}
 
                     <YStack gap={"$2"}>
