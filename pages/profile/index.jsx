@@ -7,6 +7,7 @@ import TamaguiButton from "../../components/TamaguiButton";
 import TamaguiLink from "../../components/TamaguiLink";
 import NewHeaderButton from "../../components/newHeaderButton";
 import ErrorModal from "../../components/ErrorModal";
+import CopyButton from "../../components/CopyButton";
 import {
     getProfile,
     sendRecoverPasswordEmail,
@@ -25,7 +26,7 @@ const initialState = {
 
 export default function Profile() {
     const router = useRouter();
-    const { user } = useUserContext();
+    const { user, getUser } = useUserContext();
     const [errorMessage, setErrorMessage] = useState(null);
     const [errorModalState, setErrorModalState] = useState(false);
     const [profile, setProfile] = useState(initialState);
@@ -53,6 +54,13 @@ export default function Profile() {
             }
         };
         fetchProfile();
+    }, []);
+
+    // /users/profile does not carry the lightning address (nor the email used
+    // by the password recovery link below), so pull /users/home into context.
+    // Nothing else on this route does it now that the global header is gone.
+    useEffect(() => {
+        getUser();
     }, []);
 
     const isDirty =
@@ -170,6 +178,12 @@ export default function Profile() {
         isSaving ||
         usernameStatus === "taken" ||
         usernameStatus === "checking";
+    const lightningAddress =
+        user.lightningAddress?.includes("@") && profile.username
+            ? `${profile.username}${user.lightningAddress.slice(
+                  user.lightningAddress.indexOf("@")
+              )}`
+            : user.lightningAddress;
 
     return (
         <YStack
@@ -193,6 +207,17 @@ export default function Profile() {
                 paddingBottom={"$14"}
             >
                 <YStack gap={"$5"}>
+                    {lightningAddress ? (
+                        <TamaguiInput
+                            label={"Lightning address"}
+                            value={lightningAddress}
+                            editable={false}
+                            color={"$neutral12"}
+                            iconSlot={<CopyButton value={lightningAddress} />}
+                            textAlign="left"
+                        />
+                    ) : null}
+
                     <YStack gap={"$2"}>
                         <TamaguiInput
                             label={"Username"}

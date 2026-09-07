@@ -290,8 +290,20 @@ export default function BitcoinDeposit() {
                     alignContent="center"
                 >
                     <H6 color={"$neutral13"} textAlign="center">
-                        Send SAT via Lightning Network
+                        Lightning Address
                     </H6>
+
+                    {user.lightningAddress ? (
+                        <TamaguiInput
+                            value={user.lightningAddress}
+                            editable={false}
+                            color={"$neutral12"}
+                            iconSlot={
+                                <CopyButton value={user.lightningAddress} />
+                            }
+                            textAlign="center"
+                        />
+                    ) : null}
 
                     <XStack
                         justifyContent="space-between"

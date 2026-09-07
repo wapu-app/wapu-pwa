@@ -132,7 +132,7 @@ export const UserContextProvider = ({ children }) => {
                     mandatoryAliasValidation: userData.data.settings
                         ? userData.data.settings.features.mandatory_alias_validation
                         : false,
-                    userDomain: userData.data.username,
+                    lightningAddress: userData.data.lightning_address || null,
                 });
             } catch (error) {
                 console.error("Failed to fetch user data:", error);
