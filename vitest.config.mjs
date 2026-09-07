@@ -23,6 +23,7 @@ export default defineConfig({
                 "components/Tamagui*/index.{js,jsx,ts,tsx}",
                 "components/CopyButton/index.tsx",
                 "components/layout/index.jsx",
+                "components/Referral/referral.jsx",
                 "hooks/useAmountNumpad.jsx",
                 "utils/auth.jsx",
                 "pages/login/index.jsx",

@@ -24,9 +24,17 @@ export default function Referral({ isOpen, setIsOpen }) {
         }
     };
 
+    // The dialog stays mounted while closed (one instance behind the home
+    // "Earn" button, another behind the menu's "Invitations" row), so a mount
+    // effect meant every visit to /home fired POST /users/referral once per
+    // instance — twice each under StrictMode. Ask for the link when it is
+    // actually opened, and only if we do not have one yet; the "Get your link"
+    // button covers a re-fetch after the email changes.
     useEffect(() => {
-        handleGetReferralCode();
-    }, []);
+        if (isOpen && !referralLink) {
+            handleGetReferralCode();
+        }
+    }, [isOpen]);
 
     return (
         <Dialog modal open={isOpen} onOpenChange={setIsOpen}>
