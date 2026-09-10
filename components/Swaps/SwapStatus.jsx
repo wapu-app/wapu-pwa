@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Paragraph, XStack, YStack } from "tamagui";
+import { Anchor, Paragraph, XStack, YStack } from "tamagui";
 
 import CopyButton from "../CopyButton";
 import {
@@ -11,6 +11,7 @@ import {
     GhostButton,
     Overline,
     assetOf,
+    explorerTxUrl,
     formatAssetAmount,
     mono,
     sans,
@@ -116,6 +117,50 @@ function Stepper({ t, status, confirmations, requiredConfirmations }) {
     );
 }
 
+// One transaction line in the breakdown. The hash is shown shortened (a full
+// txid does not fit a 375px viewport) but both affordances work on the whole
+// thing: the text links out to the explorer for the chain the transaction
+// settled on, and the button copies the full hash. Looking it up and pasting it
+// into a support message are different needs, so neither replaces the other.
+// `assetCode` is the leg the hash belongs to, which the caller knows and the
+// hash does not carry.
+function TxidRow({ t, label, txid, assetCode }) {
+    const href = explorerTxUrl(assetCode, txid);
+    const short = shortenHash(txid);
+
+    return (
+        <XStack justifyContent="space-between" alignItems="center" gap={"$3"}>
+            <Paragraph color={"$neutral11"} style={sans(13)}>
+                {label}
+            </Paragraph>
+            <XStack alignItems="center" gap={"$1"}>
+                {href ? (
+                    <Anchor
+                        href={href}
+                        target={"_blank"}
+                        rel={"noopener noreferrer"}
+                        aria-label={t.status.explorerAria(label)}
+                        color={"$brandMint"}
+                        style={mono(13, { textDecoration: "underline" })}
+                    >
+                        {short}
+                    </Anchor>
+                ) : (
+                    <Paragraph color={"$brandOffWhite"} style={mono(13)}>
+                        {short}
+                    </Paragraph>
+                )}
+                <CopyButton
+                    value={txid}
+                    size={"28px"}
+                    copyLabel={t.status.copyAria(label)}
+                    copiedLabel={t.status.copied}
+                />
+            </XStack>
+        </XStack>
+    );
+}
+
 // Phase 3: the deposit instructions and the live status of an existing swap.
 // Polling happens in pages/swaps; this component only renders what it is given.
 export default function SwapStatus({ t, swap, btcUnit, loading, errorText, onNewSwap }) {
@@ -153,9 +198,19 @@ export default function SwapStatus({ t, swap, btcUnit, loading, errorText, onNew
             <YStack gap={"$2"}>
                 <XStack justifyContent="space-between" alignItems="center" gap={"$3"}>
                     <Overline>{t.status.swapId}</Overline>
-                    <Paragraph color={"$neutral11"} style={mono(11)}>
-                        {shortenHash(swap.swap_id, 8, 6)}
-                    </Paragraph>
+                    {/* Shown shortened, copied whole: this is the id the user
+                        quotes back to us to claim a swap that went wrong. */}
+                    <XStack alignItems="center" gap={"$1"}>
+                        <Paragraph color={"$neutral11"} style={mono(11)}>
+                            {shortenHash(swap.swap_id, 8, 6)}
+                        </Paragraph>
+                        <CopyButton
+                            value={swap.swap_id}
+                            size={"28px"}
+                            copyLabel={t.status.copyAria(t.status.swapId)}
+                            copiedLabel={t.status.copied}
+                        />
+                    </XStack>
                 </XStack>
                 <Paragraph color={"$brandOffWhite"} style={sans(18, { fontWeight: 800 })}>
                     {isWaiting ? t.status.title : statusLabel}
@@ -219,7 +274,12 @@ export default function SwapStatus({ t, swap, btcUnit, loading, errorText, onNew
                             >
                                 {swap.deposit_address}
                             </Paragraph>
-                            <CopyButton value={swap.deposit_address} size={"28px"} />
+                            <CopyButton
+                                value={swap.deposit_address}
+                                size={"28px"}
+                                copyLabel={t.status.copyAria(t.status.depositAddress)}
+                                copiedLabel={t.status.copied}
+                            />
                         </XStack>
                     </YStack>
 
@@ -264,22 +324,31 @@ export default function SwapStatus({ t, swap, btcUnit, loading, errorText, onNew
                         network: true,
                     })}
                 />
+                {/* The deposit arrives on the `from` chain and the payout
+                    leaves on the `to` one; a refund goes back out the way the
+                    deposit came in. */}
                 {swap.deposit_txid ? (
-                    <BreakdownRow
+                    <TxidRow
+                        t={t}
                         label={t.status.depositTxid}
-                        value={shortenHash(swap.deposit_txid)}
+                        txid={swap.deposit_txid}
+                        assetCode={swap.from}
                     />
                 ) : null}
                 {swap.payout_txid ? (
-                    <BreakdownRow
+                    <TxidRow
+                        t={t}
                         label={t.status.payoutTxid}
-                        value={shortenHash(swap.payout_txid)}
+                        txid={swap.payout_txid}
+                        assetCode={swap.to}
                     />
                 ) : null}
                 {swap.refund_txid ? (
-                    <BreakdownRow
+                    <TxidRow
+                        t={t}
                         label={t.status.refundTxid}
-                        value={shortenHash(swap.refund_txid)}
+                        txid={swap.refund_txid}
+                        assetCode={swap.from}
                     />
                 ) : null}
             </YStack>

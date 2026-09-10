@@ -6,6 +6,7 @@ import {
     displayDecimals,
     displaySymbol,
     effectiveRate,
+    explorerTxUrl,
     formatAssetAmount,
     formatBps,
     formatRate,
@@ -211,5 +212,56 @@ describe("swaps primitives — address validation", () => {
             "USDT_ETHEREUM",
             "USDT_POLYGON",
         ]);
+    });
+});
+
+describe("swaps primitives — explorer links", () => {
+    const BITCOIN_TXID =
+        "64f8f01c4f523b4464042ee58bed2d777d33425314072c325f656638afc574b8";
+    const LIQUID_TXID =
+        "3a7c9c29e37144220dcb7fc522846c7243c8a89f8dbc59d5f7b0e4ff7e299566";
+    const ETHEREUM_TXID =
+        "0xdb04c1ebc7f7698c4271fcb0ac5ca9321b5c6abfdc5cd1e7f4c5b09bba8470bd";
+    const POLYGON_TXID =
+        "0x7aebdf8d76eb08e8929cfa4899daf9742ec2b5a9d76e69316cbdcb7f04038f2a";
+
+    it("sends every leg to its own chain's explorer", () => {
+        expect(explorerTxUrl("BTC", BITCOIN_TXID)).toBe(
+            `https://blockstream.info/tx/${BITCOIN_TXID}`
+        );
+        expect(explorerTxUrl("LBTC", LIQUID_TXID)).toBe(
+            `https://blockstream.info/liquid/tx/${LIQUID_TXID}`
+        );
+        expect(explorerTxUrl("USDT_LIQUID", LIQUID_TXID)).toBe(
+            `https://blockstream.info/liquid/tx/${LIQUID_TXID}`
+        );
+        expect(explorerTxUrl("USDT_ETHEREUM", ETHEREUM_TXID)).toBe(
+            `https://etherscan.io/tx/${ETHEREUM_TXID}`
+        );
+        expect(explorerTxUrl("USDT_POLYGON", POLYGON_TXID)).toBe(
+            `https://polygonscan.com/tx/${POLYGON_TXID}`
+        );
+    });
+
+    it("keeps the two USDT legs apart even though they share a family", () => {
+        expect(explorerTxUrl("USDT_ETHEREUM", ETHEREUM_TXID)).not.toContain(
+            "polygonscan"
+        );
+        expect(explorerTxUrl("USDT_POLYGON", POLYGON_TXID)).not.toContain(
+            "etherscan"
+        );
+    });
+
+    it("returns null when there is nothing to link to", () => {
+        expect(explorerTxUrl("BTC", null)).toBeNull();
+        expect(explorerTxUrl("BTC", "")).toBeNull();
+        expect(explorerTxUrl("BTC", "   ")).toBeNull();
+        expect(explorerTxUrl("UNKNOWN", BITCOIN_TXID)).toBeNull();
+    });
+
+    it("escapes the hash instead of pasting it into the URL raw", () => {
+        expect(explorerTxUrl("BTC", "abc/../evil?x=1")).toBe(
+            "https://blockstream.info/tx/abc%2F..%2Fevil%3Fx%3D1"
+        );
     });
 });

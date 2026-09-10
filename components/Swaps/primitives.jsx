@@ -23,12 +23,17 @@ import { GEIST, GEIST_MONO } from "../../utils/fonts";
 // `denomination: "btc"` marks the legs whose amounts can be typed and read
 // either in BTC or in satoshis (the base unit is the satoshi in both cases, so
 // the switch is purely a display-decimals change).
+// `explorer` is the block explorer's transaction URL prefix for the leg's
+// chain. It is per-asset and not per-family because `family` is about address
+// shape: the two USDT legs share `family: "evm"` and validate identically, but
+// a Polygon txid is not on Etherscan.
 export const ASSETS = {
     BTC: {
         code: "BTC",
         symbol: "BTC",
         ticker: "BTC",
         network: "Bitcoin",
+        explorer: "https://blockstream.info/tx/",
         decimals: 8,
         family: "bitcoin",
         denomination: "btc",
@@ -38,6 +43,7 @@ export const ASSETS = {
         symbol: "BTC",
         ticker: "L-BTC",
         network: "Liquid",
+        explorer: "https://blockstream.info/liquid/tx/",
         decimals: 8,
         family: "liquid",
         denomination: "btc",
@@ -47,6 +53,7 @@ export const ASSETS = {
         symbol: "USDT",
         ticker: "USDT Liquid",
         network: "Liquid",
+        explorer: "https://blockstream.info/liquid/tx/",
         decimals: 8,
         family: "liquid",
     },
@@ -55,6 +62,7 @@ export const ASSETS = {
         symbol: "USDT",
         ticker: "USDT Ethereum",
         network: "Ethereum",
+        explorer: "https://etherscan.io/tx/",
         decimals: 6,
         family: "evm",
     },
@@ -63,6 +71,7 @@ export const ASSETS = {
         symbol: "USDT",
         ticker: "USDT Polygon",
         network: "Polygon",
+        explorer: "https://polygonscan.com/tx/",
         decimals: 6,
         family: "evm",
     },
@@ -267,6 +276,21 @@ export function shortenHash(value, head = 10, tail = 8) {
         return text;
     }
     return `${text.slice(0, head)}…${text.slice(-tail)}`;
+}
+
+// The block explorer link for a txid. Which chain a hash settled on is not a
+// property of the hash, so the caller passes the leg: the deposit lands on
+// `swap.from`, the payout on `swap.to`, and a refund goes back out on
+// `swap.from`. Mainnet only, like the explorers themselves — a testnet
+// deployment would need its own prefixes. Returns null when the asset has no
+// explorer or the txid is empty, so the caller can fall back to plain text.
+export function explorerTxUrl(assetCode, txid) {
+    const asset = assetOf(assetCode);
+    const hash = String(txid === null || txid === undefined ? "" : txid).trim();
+    if (!asset || !asset.explorer || !hash) {
+        return null;
+    }
+    return `${asset.explorer}${encodeURIComponent(hash)}`;
 }
 
 // ---------------------------------------------------------------- styles ---
