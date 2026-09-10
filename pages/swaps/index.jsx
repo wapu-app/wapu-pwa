@@ -421,101 +421,127 @@ export default function SwapsPage() {
                 overflow="hidden"
                 backgroundColor={"$brandInk"}
             >
-                <BrandGlow />
+                {/* The glows hang off the frame on every side. They live in
+                    their own clipped layer so the negative bottom/right
+                    offsets cannot add scrollable slack to the column that
+                    actually scrolls. */}
                 <YStack
-                    width={"100%"}
-                    maxWidth={520}
-                    alignSelf="center"
-                    paddingHorizontal={"$4"}
-                    paddingTop={"$5"}
-                    paddingBottom={"$8"}
-                    gap={"$4"}
+                    position="absolute"
+                    top={0}
+                    right={0}
+                    bottom={0}
+                    left={0}
+                    overflow="hidden"
+                    pointerEvents="none"
                 >
-                    <LanguageSelector t={t} lang={lang} setLang={setLang} />
+                    <BrandGlow />
+                </YStack>
+                {/* The app shell (body + <CustomMain/>) is a fixed-height
+                    frame, so a page taller than the viewport has to carry its
+                    own scroll — the three phases all overflow a phone screen.
+                    Same pattern as /newSignUp and /newTransactionPending. */}
+                <YStack
+                    flex={1}
+                    minHeight={0}
+                    width={"100%"}
+                    overflow="auto"
+                    scrollbarWidth="thin"
+                >
+                    <YStack
+                        width={"100%"}
+                        maxWidth={520}
+                        alignSelf="center"
+                        paddingHorizontal={"$4"}
+                        paddingTop={"$5"}
+                        paddingBottom={"$8"}
+                        gap={"$4"}
+                    >
+                        <LanguageSelector t={t} lang={lang} setLang={setLang} />
 
-                    <YStack gap={"$2.5"}>
-                        <XStack
-                            alignSelf="flex-start"
-                            alignItems="center"
-                            gap={"$2"}
-                            paddingVertical={"$1.5"}
-                            paddingHorizontal={"$2.5"}
-                            borderRadius={"$8"}
-                            borderWidth={"$1"}
-                            borderColor={"$neutral8"}
-                            backgroundColor={"$brandSurfaceDeep"}
-                        >
-                            <YStack
-                                width={7}
-                                height={7}
-                                borderRadius={"$10"}
-                                backgroundColor={"$brandMint"}
+                        <YStack gap={"$2.5"}>
+                            <XStack
+                                alignSelf="flex-start"
+                                alignItems="center"
+                                gap={"$2"}
+                                paddingVertical={"$1.5"}
+                                paddingHorizontal={"$2.5"}
+                                borderRadius={"$8"}
+                                borderWidth={"$1"}
+                                borderColor={"$neutral8"}
+                                backgroundColor={"$brandSurfaceDeep"}
+                            >
+                                <YStack
+                                    width={7}
+                                    height={7}
+                                    borderRadius={"$10"}
+                                    backgroundColor={"$brandMint"}
+                                />
+                                <Overline>{t.badge}</Overline>
+                            </XStack>
+                            <Paragraph
+                                color={"$brandOffWhite"}
+                                style={sans(26, { fontWeight: 800, lineHeight: "30px" })}
+                            >
+                                {t.title}
+                            </Paragraph>
+                            <Paragraph
+                                color={"$neutral11"}
+                                style={sans(13, { lineHeight: "18px" })}
+                            >
+                                {t.subtitle}
+                            </Paragraph>
+                        </YStack>
+
+                        {phase === 1 ? (
+                            <QuoteCard
+                                t={t}
+                                from={from}
+                                to={to}
+                                amount={amount}
+                                amountOut={amountOut}
+                                btcUnit={btcUnit}
+                                quote={quote}
+                                loading={quoteLoading}
+                                errorText={translateError(quoteError)}
+                                onFromChange={handleFromChange}
+                                onToChange={handleToChange}
+                                onAmountChange={handleAmountChange}
+                                onAmountOutChange={handleAmountOutChange}
+                                onToggleBtcUnit={handleToggleBtcUnit}
+                                onSwitch={handleSwitch}
+                                onContinue={handleContinue}
                             />
-                            <Overline>{t.badge}</Overline>
-                        </XStack>
-                        <Paragraph
-                            color={"$brandOffWhite"}
-                            style={sans(26, { fontWeight: 800, lineHeight: "30px" })}
-                        >
-                            {t.title}
-                        </Paragraph>
-                        <Paragraph
-                            color={"$neutral11"}
-                            style={sans(13, { lineHeight: "18px" })}
-                        >
-                            {t.subtitle}
-                        </Paragraph>
+                        ) : null}
+
+                        {phase === 2 ? (
+                            <AddressForm
+                                t={t}
+                                from={from}
+                                to={to}
+                                btcUnit={btcUnit}
+                                quote={quote}
+                                payoutAddress={payoutAddress}
+                                refundAddress={refundAddress}
+                                onPayoutChange={setPayoutAddress}
+                                onRefundChange={setRefundAddress}
+                                onBack={() => setPhase(1)}
+                                onSubmit={handleCreate}
+                                submitting={creating}
+                                submitError={translateError(createError)}
+                            />
+                        ) : null}
+
+                        {phase === 3 ? (
+                            <SwapStatus
+                                t={t}
+                                btcUnit={btcUnit}
+                                swap={swap}
+                                loading={swapLoading}
+                                errorText={translateError(swapError)}
+                                onNewSwap={handleNewSwap}
+                            />
+                        ) : null}
                     </YStack>
-
-                    {phase === 1 ? (
-                        <QuoteCard
-                            t={t}
-                            from={from}
-                            to={to}
-                            amount={amount}
-                            amountOut={amountOut}
-                            btcUnit={btcUnit}
-                            quote={quote}
-                            loading={quoteLoading}
-                            errorText={translateError(quoteError)}
-                            onFromChange={handleFromChange}
-                            onToChange={handleToChange}
-                            onAmountChange={handleAmountChange}
-                            onAmountOutChange={handleAmountOutChange}
-                            onToggleBtcUnit={handleToggleBtcUnit}
-                            onSwitch={handleSwitch}
-                            onContinue={handleContinue}
-                        />
-                    ) : null}
-
-                    {phase === 2 ? (
-                        <AddressForm
-                            t={t}
-                            from={from}
-                            to={to}
-                            btcUnit={btcUnit}
-                            quote={quote}
-                            payoutAddress={payoutAddress}
-                            refundAddress={refundAddress}
-                            onPayoutChange={setPayoutAddress}
-                            onRefundChange={setRefundAddress}
-                            onBack={() => setPhase(1)}
-                            onSubmit={handleCreate}
-                            submitting={creating}
-                            submitError={translateError(createError)}
-                        />
-                    ) : null}
-
-                    {phase === 3 ? (
-                        <SwapStatus
-                            t={t}
-                            btcUnit={btcUnit}
-                            swap={swap}
-                            loading={swapLoading}
-                            errorText={translateError(swapError)}
-                            onNewSwap={handleNewSwap}
-                        />
-                    ) : null}
                 </YStack>
             </YStack>
         </>
