@@ -38,7 +38,8 @@ vi.mock("qrcode.react", async () => {
 vi.mock("../../../api/api", () => ({
     createSwap: (body) => mocks.createSwap(body),
     getSwap: (id) => mocks.getSwap(id),
-    getSwapQuote: (from, to, amount) => mocks.getSwapQuote(from, to, amount),
+    getSwapQuote: (from, to, amount, side) =>
+        mocks.getSwapQuote(from, to, amount, side),
 }));
 
 const QUOTE = {
@@ -88,6 +89,12 @@ const quoteOk = (overrides = {}) => ({
 
 const typeAmount = async (user, value) => {
     const input = screen.getByLabelText("Monto a enviar");
+    await user.click(input);
+    await user.type(input, value);
+};
+
+const typeAmountOut = async (user, value) => {
+    const input = screen.getByLabelText("Monto a recibir");
     await user.click(input);
     await user.type(input, value);
 };
@@ -142,7 +149,8 @@ describe("SwapsPage", () => {
                 expect(mocks.getSwapQuote).toHaveBeenCalledWith(
                     "LBTC",
                     "BTC",
-                    100000000
+                    100000000,
+                    "in"
                 ),
             { timeout: 3000 }
         );
@@ -151,6 +159,95 @@ describe("SwapsPage", () => {
         // is deliberately not shown: it is already baked into the quoted rate.
         expect(screen.getAllByText("1%").length).toBeGreaterThan(0);
         expect(screen.queryByText(/spread/i)).not.toBeInTheDocument();
+    });
+
+    it("mirrors the quote into the receive field without re-querying", async () => {
+        const user = userEvent.setup();
+        mocks.getSwapQuote.mockResolvedValue(quoteOk());
+        renderWithTamagui(<SwapsPage />);
+
+        await typeAmount(user, "1");
+
+        await waitFor(
+            () =>
+                expect(screen.getByLabelText("Monto a recibir")).toHaveValue(
+                    "0.9801"
+                ),
+            { timeout: 3000 }
+        );
+        // Filling in the counterpart must not feed back into the fetch.
+        expect(mocks.getSwapQuote).toHaveBeenCalledTimes(1);
+    });
+
+    it("prices from the receive side when the user types what they want to get", async () => {
+        const user = userEvent.setup();
+        mocks.getSwapQuote.mockResolvedValue(
+            quoteOk({ amount_in: 102030405, amount_out: 100000000, priced_from: "out" })
+        );
+        renderWithTamagui(<SwapsPage />);
+
+        await typeAmountOut(user, "1");
+
+        await waitFor(
+            () =>
+                expect(mocks.getSwapQuote).toHaveBeenCalledWith(
+                    "LBTC",
+                    "BTC",
+                    100000000,
+                    "out"
+                ),
+            { timeout: 3000 }
+        );
+        // ...and the amount to send comes back from the backend's solution.
+        await waitFor(() =>
+            expect(screen.getByLabelText("Monto a enviar")).toHaveValue("1.02030405")
+        );
+    });
+
+    it("switches both amount fields between BTC and sats", async () => {
+        const user = userEvent.setup();
+        mocks.getSwapQuote.mockResolvedValue(quoteOk());
+        renderWithTamagui(<SwapsPage />);
+
+        await typeAmount(user, "1");
+        await waitFor(
+            () =>
+                expect(screen.getByLabelText("Monto a recibir")).toHaveValue(
+                    "0.9801"
+                ),
+            { timeout: 3000 }
+        );
+
+        // Both legs are bitcoin here, so either ticker flips the whole card.
+        await user.click(
+            screen.getAllByRole("button", { name: /Mostrar los montos en SAT/ })[0]
+        );
+
+        expect(screen.getByLabelText("Monto a enviar")).toHaveValue("100000000");
+        expect(screen.getByLabelText("Monto a recibir")).toHaveValue("98010000");
+        expect(
+            screen.getAllByRole("button", { name: /Mostrar los montos en BTC/ }).length
+        ).toBe(2);
+    });
+
+    it("labels both bitcoin legs BTC and tells them apart by network", async () => {
+        const user = userEvent.setup();
+        mocks.getSwapQuote.mockResolvedValue(quoteOk());
+        renderWithTamagui(<SwapsPage />);
+
+        // The Liquid leg reads "BTC" in the field; the selector carries "Liquid"
+        // (once per select, hence getAllByText).
+        expect(screen.queryByText("L-BTC")).not.toBeInTheDocument();
+        expect(screen.getAllByText("BTC · Liquid").length).toBeGreaterThan(0);
+
+        await typeAmount(user, "1");
+        const cta = await screen.findByRole("button", { name: /continuar/i });
+        await waitFor(() => expect(cta).not.toBeDisabled(), { timeout: 3000 });
+        await user.click(cta);
+
+        // Away from the selectors, the summary spells the chain out.
+        expect(await screen.findByText("1 BTC · Liquid")).toBeInTheDocument();
+        expect(screen.getByText("0.9801 BTC · Bitcoin")).toBeInTheDocument();
     });
 
     it("warns and blocks the CTA when there is no liquidity", async () => {

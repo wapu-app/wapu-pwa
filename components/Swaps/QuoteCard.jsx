@@ -12,27 +12,32 @@ import {
     PrimaryButton,
     WarningBanner,
     assetOf,
+    displaySymbol,
     formatAssetAmount,
     formatBps,
-    fromBaseUnits,
+    hasUnitToggle,
     mono,
     sans,
 } from "./primitives";
 
-// Phase 1: pick the pair, type an amount, read the live quote. The card is a
-// pure view — the debounced fetch lives in pages/swaps so the phases can share
-// one request lifecycle.
+// Phase 1: pick the pair, type an amount in *either* field, read the live
+// quote. The card is a pure view — the debounced fetch lives in pages/swaps so
+// the phases can share one request lifecycle, and so does the BTC/SAT unit.
 export default function QuoteCard({
     t,
     from,
     to,
     amount,
+    amountOut,
+    btcUnit,
     quote,
     loading,
     errorText,
     onFromChange,
     onToChange,
     onAmountChange,
+    onAmountOutChange,
+    onToggleBtcUnit,
     onSwitch,
     onContinue,
 }) {
@@ -41,16 +46,20 @@ export default function QuoteCard({
     const hasLiquidity = Boolean(quote && quote.liquidity_ok);
     const canContinue = hasLiquidity && !loading;
 
-    const amountOut =
-        quote && toAsset ? formatAssetAmount(quote.amount_out, to) : "—";
+    const fromUnit = displaySymbol(from, btcUnit);
+    const toUnit = displaySymbol(to, btcUnit);
+    const unitAria = t.quote.unitAria(btcUnit === "BTC" ? "SAT" : "BTC");
+
+    const amountOutText =
+        quote && toAsset ? formatAssetAmount(quote.amount_out, to, { btcUnit }) : "—";
+    // The rate is always quoted per whole coin: sats-per-sat would read "1".
     const rateText =
         quote && quote.rate && fromAsset && toAsset
             ? `1 ${fromAsset.symbol} ≈ ${quote.rate} ${toAsset.symbol}`
             : "—";
-    const minText =
-        quote && fromAsset
-            ? `${fromBaseUnits(quote.min_amount_in, fromAsset.decimals)} ${fromAsset.symbol}`
-            : "—";
+    const minText = quote
+        ? formatAssetAmount(quote.min_amount_in, from, { btcUnit })
+        : "—";
     const expirationText =
         quote && quote.expiration_minutes
             ? t.quote.minutes(quote.expiration_minutes)
@@ -78,7 +87,9 @@ export default function QuoteCard({
                     value={amount}
                     onChange={onAmountChange}
                     placeholder={"0"}
-                    unit={fromAsset ? fromAsset.symbol : ""}
+                    unit={fromUnit}
+                    onUnitPress={hasUnitToggle(from) ? onToggleBtcUnit : undefined}
+                    unitAriaLabel={unitAria}
                     ariaLabel={t.quote.amountAria}
                     autoFocus
                 />
@@ -121,27 +132,17 @@ export default function QuoteCard({
                         minWidth={150}
                     />
                 </XStack>
-                <XStack
-                    alignItems="center"
-                    gap={"$2"}
-                    height={58}
-                    paddingHorizontal={"$3.5"}
-                    backgroundColor={"$brandSurfaceDeep"}
-                    borderWidth={"$1"}
-                    borderColor={"$neutral8"}
-                    borderRadius={"$5"}
-                >
-                    <Paragraph
-                        flex={1}
-                        color={quote ? "$brandOffWhite" : "$neutral9"}
-                        style={mono(24, { fontWeight: 500 })}
-                    >
-                        {quote ? fromBaseUnits(quote.amount_out, toAsset.decimals) : "—"}
-                    </Paragraph>
-                    <Paragraph color={"$neutral10"} style={mono(14)}>
-                        {toAsset ? toAsset.symbol : ""}
-                    </Paragraph>
-                </XStack>
+                {/* Editable: typing here asks the backend for the input that
+                    pays out exactly this much ("I want to receive 1 BTC"). */}
+                <AmountField
+                    value={amountOut}
+                    onChange={onAmountOutChange}
+                    placeholder={"0"}
+                    unit={toUnit}
+                    onUnitPress={hasUnitToggle(to) ? onToggleBtcUnit : undefined}
+                    unitAriaLabel={unitAria}
+                    ariaLabel={t.quote.amountOutAria}
+                />
             </YStack>
 
             {loading ? (
@@ -165,7 +166,7 @@ export default function QuoteCard({
                 borderColor={"$neutral7"}
                 backgroundColor={"$brandSurfaceDeep"}
             >
-                <BreakdownRow label={t.quote.youGet} value={amountOut} />
+                <BreakdownRow label={t.quote.youGet} value={amountOutText} />
                 <BreakdownRow label={t.quote.rate} value={rateText} />
                 <BreakdownRow
                     label={t.quote.fee}

@@ -533,11 +533,14 @@ export async function revokeApiToken() {
 // creation is "optional" auth so a logged-in visitor gets the swap attached to
 // their account without blocking anonymous ones. Amounts travel as integer
 // base units of the asset (see components/Swaps/primitives).
-export async function getSwapQuote(from, to, amount) {
+// `side` picks which leg the caller pinned: "in" prices forward (what do I get
+// for `amount`?), "out" asks the backend to solve for the input that pays out
+// `amount`. The response carries both amounts either way.
+export async function getSwapQuote(from, to, amount, side = "in") {
     const query = new URLSearchParams({
         from: from,
         to: to,
-        amount: String(amount),
+        [side === "out" ? "amount_out" : "amount"]: String(amount),
     });
 
     return await apiRequest({

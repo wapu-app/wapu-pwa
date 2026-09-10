@@ -10,8 +10,11 @@ import SwapStatus, { TERMINAL_STATUSES } from "../../components/Swaps/SwapStatus
 import { SUPPORTED_LANGS, useSwapsLang } from "../../components/Swaps/i18n";
 import {
     BrandGlow,
+    DEFAULT_BTC_UNIT,
     Overline,
-    assetOf,
+    convertUnitText,
+    displayDecimals,
+    fromBaseUnits,
     sans,
     toBaseUnits,
 } from "../../components/Swaps/primitives";
@@ -27,6 +30,20 @@ const DEFAULT_TO = "BTC";
 const AMOUNT_PATTERN = /^\d*(\.\d*)?$/;
 
 const LANG_LABELS = { es: "ES", en: "EN" };
+
+// The BTC/SAT preference is one setting for the whole card (clicking either
+// ticker flips both fields) and outlives the visit, like the language.
+const BTC_UNIT_STORAGE_KEY = "wapu.swaps.btcUnit";
+
+function readStoredBtcUnit() {
+    try {
+        const stored = window.localStorage.getItem(BTC_UNIT_STORAGE_KEY);
+        return stored === "SAT" || stored === "BTC" ? stored : DEFAULT_BTC_UNIT;
+    } catch {
+        // Private mode / blocked storage: the default is perfectly usable.
+        return DEFAULT_BTC_UNIT;
+    }
+}
 
 // Small pill at the very top of the page. The swaps flow is the first public
 // surface a non-Spanish visitor can land on, so the language switch has to be
@@ -80,7 +97,18 @@ export default function SwapsPage() {
     const [phase, setPhase] = useState(1);
     const [from, setFrom] = useState(DEFAULT_FROM);
     const [to, setTo] = useState(DEFAULT_TO);
+    // Both amount fields are editable. `side` records which one the user is
+    // driving: "in" quotes forward, "out" asks the backend to solve for the
+    // input. The other field is filled in from the answer.
     const [amount, setAmount] = useState("");
+    const [amountOut, setAmountOut] = useState("");
+    const [side, setSide] = useState("in");
+    const [btcUnit, setBtcUnit] = useState(DEFAULT_BTC_UNIT);
+
+    // Read after mount: localStorage does not exist during SSR.
+    useEffect(() => {
+        setBtcUnit(readStoredBtcUnit());
+    }, []);
 
     const [quote, setQuote] = useState(null);
     const [quoteLoading, setQuoteLoading] = useState(false);
@@ -113,6 +141,21 @@ export default function SwapsPage() {
         }
     }, [router.isReady, router.query]);
 
+    // Whichever field the user typed in is the one we send; the other one is an
+    // output of the quote. Only the pinned text is a dependency of the fetch —
+    // mirroring the answer into the other field must not trigger a second
+    // round trip.
+    const pinnedCode = side === "in" ? from : to;
+    const pinnedText = side === "in" ? amount : amountOut;
+
+    const clearMirroredAmount = useCallback(() => {
+        if (side === "in") {
+            setAmountOut("");
+        } else {
+            setAmount("");
+        }
+    }, [side]);
+
     // Debounced quote. Runs only in phase 1: once the user moves on, the quote
     // shown in the summary is the one they accepted.
     useEffect(() => {
@@ -125,12 +168,12 @@ export default function SwapsPage() {
             setQuoteLoading(false);
             return undefined;
         }
-        const fromAsset = assetOf(from);
-        const amountIn = fromAsset ? toBaseUnits(amount, fromAsset.decimals) : null;
-        if (!amountIn || amountIn <= 0) {
+        const pinnedAmount = toBaseUnits(pinnedText, displayDecimals(pinnedCode, btcUnit));
+        if (!pinnedAmount || pinnedAmount <= 0) {
             setQuote(null);
             setQuoteError(null);
             setQuoteLoading(false);
+            clearMirroredAmount();
             return undefined;
         }
 
@@ -138,15 +181,28 @@ export default function SwapsPage() {
         setQuoteLoading(true);
         const timer = setTimeout(async () => {
             try {
-                const { data, status } = await getSwapQuote(from, to, amountIn);
+                const { data, status } = await getSwapQuote(from, to, pinnedAmount, side);
                 if (cancelled) {
                     return;
                 }
                 if (status === 200 && data && !data.error) {
                     setQuote(data);
                     setQuoteError(null);
+                    // Mirror the resolved counterpart into the other field.
+                    if (side === "in") {
+                        setAmountOut(
+                            fromBaseUnits(data.amount_out, displayDecimals(to, btcUnit)) || ""
+                        );
+                    } else {
+                        setAmount(
+                            fromBaseUnits(data.amount_in, displayDecimals(from, btcUnit)) || ""
+                        );
+                    }
                 } else {
                     setQuote(null);
+                    // A stale mirrored figure next to a failed quote reads as a
+                    // live price, so it goes with the quote.
+                    clearMirroredAmount();
                     setQuoteError(
                         data && data.error
                             ? { message: data.error }
@@ -156,6 +212,7 @@ export default function SwapsPage() {
             } catch {
                 if (!cancelled) {
                     setQuote(null);
+                    clearMirroredAmount();
                     setQuoteError({ key: "network" });
                 }
             } finally {
@@ -169,7 +226,7 @@ export default function SwapsPage() {
             cancelled = true;
             clearTimeout(timer);
         };
-    }, [phase, from, to, amount]);
+    }, [phase, from, to, side, pinnedText, pinnedCode, btcUnit, clearMirroredAmount]);
 
     const isTerminal = Boolean(swap) && TERMINAL_STATUSES.includes(swap.status);
 
@@ -237,9 +294,32 @@ export default function SwapsPage() {
         [t]
     );
 
+    // Typing in a field pins that side of the quote.
     const handleAmountChange = (value) => {
         if (AMOUNT_PATTERN.test(value)) {
+            setSide("in");
             setAmount(value);
+        }
+    };
+
+    const handleAmountOutChange = (value) => {
+        if (AMOUNT_PATTERN.test(value)) {
+            setSide("out");
+            setAmountOut(value);
+        }
+    };
+
+    // BTC <-> SAT. Both fields are rewritten so the numbers on screen keep
+    // their value instead of silently changing by 10^8.
+    const handleToggleBtcUnit = () => {
+        const next = btcUnit === "BTC" ? "SAT" : "BTC";
+        setAmount((current) => convertUnitText(current, from, btcUnit, next));
+        setAmountOut((current) => convertUnitText(current, to, btcUnit, next));
+        setBtcUnit(next);
+        try {
+            window.localStorage.setItem(BTC_UNIT_STORAGE_KEY, next);
+        } catch {
+            // Non-fatal: the choice just won't survive the visit.
         }
     };
 
@@ -259,9 +339,14 @@ export default function SwapsPage() {
         setTo(next);
     };
 
+    // Reversing the pair carries the amounts along with their assets, so the
+    // figure the user pinned stays pinned to the same coin.
     const handleSwitch = () => {
         setFrom(to);
         setTo(from);
+        setAmount(amountOut);
+        setAmountOut(amount);
+        setSide(side === "in" ? "out" : "in");
     };
 
     const handleContinue = () => {
@@ -317,6 +402,8 @@ export default function SwapsPage() {
         setPayoutAddress("");
         setRefundAddress("");
         setAmount("");
+        setAmountOut("");
+        setSide("in");
         setQuote(null);
         setQuoteError(null);
         router.push("/swaps");
@@ -386,12 +473,16 @@ export default function SwapsPage() {
                             from={from}
                             to={to}
                             amount={amount}
+                            amountOut={amountOut}
+                            btcUnit={btcUnit}
                             quote={quote}
                             loading={quoteLoading}
                             errorText={translateError(quoteError)}
                             onFromChange={handleFromChange}
                             onToChange={handleToChange}
                             onAmountChange={handleAmountChange}
+                            onAmountOutChange={handleAmountOutChange}
+                            onToggleBtcUnit={handleToggleBtcUnit}
                             onSwitch={handleSwitch}
                             onContinue={handleContinue}
                         />
@@ -402,6 +493,7 @@ export default function SwapsPage() {
                             t={t}
                             from={from}
                             to={to}
+                            btcUnit={btcUnit}
                             quote={quote}
                             payoutAddress={payoutAddress}
                             refundAddress={refundAddress}
@@ -417,6 +509,7 @@ export default function SwapsPage() {
                     {phase === 3 ? (
                         <SwapStatus
                             t={t}
+                            btcUnit={btcUnit}
                             swap={swap}
                             loading={swapLoading}
                             errorText={translateError(swapError)}

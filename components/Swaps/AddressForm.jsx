@@ -25,6 +25,7 @@ export default function AddressForm({
     t,
     from,
     to,
+    btcUnit,
     quote,
     payoutAddress,
     refundAddress,
@@ -131,11 +132,17 @@ export default function AddressForm({
                     <Overline>{t.addresses.summary}</Overline>
                     <BreakdownRow
                         label={t.quote.youSend}
-                        value={formatAssetAmount(quote.amount_in, from)}
+                        value={formatAssetAmount(quote.amount_in, from, {
+                            btcUnit,
+                            network: true,
+                        })}
                     />
                     <BreakdownRow
                         label={t.quote.youGet}
-                        value={formatAssetAmount(quote.amount_out, to)}
+                        value={formatAssetAmount(quote.amount_out, to, {
+                            btcUnit,
+                            network: true,
+                        })}
                     />
                     <BreakdownRow label={t.quote.fee} value={formatBps(quote.fee_bps)} />
                 </YStack>

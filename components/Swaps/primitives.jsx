@@ -14,9 +14,30 @@ import { GEIST, GEIST_MONO } from "../../utils/fonts";
 // The wire speaks integer base units and opaque asset codes; the UI speaks
 // human amounts and network names. This table is the only place that maps
 // between the two.
+// The ticker is intentionally plain "BTC" for both bitcoin legs: the network
+// ("Bitcoin" / "Liquid") is already spelled out in the selector right above the
+// field, so repeating it inside the amount box only makes the number harder to
+// read. `family` is what the code branches on, never the symbol.
+// `denomination: "btc"` marks the legs whose amounts can be typed and read
+// either in BTC or in satoshis (the base unit is the satoshi in both cases, so
+// the switch is purely a display-decimals change).
 export const ASSETS = {
-    BTC: { code: "BTC", symbol: "BTC", network: "Bitcoin", decimals: 8, family: "bitcoin" },
-    LBTC: { code: "LBTC", symbol: "L-BTC", network: "Liquid", decimals: 8, family: "liquid" },
+    BTC: {
+        code: "BTC",
+        symbol: "BTC",
+        network: "Bitcoin",
+        decimals: 8,
+        family: "bitcoin",
+        denomination: "btc",
+    },
+    LBTC: {
+        code: "LBTC",
+        symbol: "BTC",
+        network: "Liquid",
+        decimals: 8,
+        family: "liquid",
+        denomination: "btc",
+    },
     USDT_LIQUID: {
         code: "USDT_LIQUID",
         symbol: "USDT",
@@ -48,6 +69,52 @@ export const ASSET_OPTIONS = ASSET_CODES.map((code) => ({
 }));
 
 export const assetOf = (code) => ASSETS[code] || null;
+
+// ------------------------------------------------------------ btc units ---
+
+export const BTC_UNITS = ["BTC", "SAT"];
+export const DEFAULT_BTC_UNIT = "BTC";
+
+// True when the leg's amount can be shown as BTC or as sats.
+export const hasUnitToggle = (code) => {
+    const asset = assetOf(code);
+    return Boolean(asset && asset.denomination === "btc");
+};
+
+// How many decimals the *display* uses. Sats are the base unit, so "SAT" means
+// zero decimals; everything else keeps the asset's own precision.
+export function displayDecimals(code, btcUnit) {
+    const asset = assetOf(code);
+    if (!asset) {
+        return 0;
+    }
+    return hasUnitToggle(code) && btcUnit === "SAT" ? 0 : asset.decimals;
+}
+
+// The ticker next to the number: "BTC"/"SAT" for the bitcoin legs (Bitcoin and
+// Liquid alike), the asset's own symbol otherwise.
+export function displaySymbol(code, btcUnit) {
+    const asset = assetOf(code);
+    if (!asset) {
+        return "";
+    }
+    return hasUnitToggle(code) ? btcUnit : asset.symbol;
+}
+
+// Re-writes a typed amount when the unit changes, keeping the value identical:
+// "0.05" BTC <-> "5000000" SAT. Text that does not parse is left untouched so
+// a half-typed number survives the toggle.
+export function convertUnitText(text, code, fromUnit, toUnit) {
+    if (!text || fromUnit === toUnit || !hasUnitToggle(code)) {
+        return text;
+    }
+    const base = toBaseUnits(text, displayDecimals(code, fromUnit));
+    if (base === null) {
+        return text;
+    }
+    const next = fromBaseUnits(base, displayDecimals(code, toUnit));
+    return next === null ? text : next;
+}
 
 // Client-side mirrors of the backend address checks. They are deliberately
 // loose (a full bech32/base58 checksum belongs on the server); the point is to
@@ -98,14 +165,21 @@ export function fromBaseUnits(amount, decimals) {
     return `${sign}${whole}${fraction ? `.${fraction}` : ""}`;
 }
 
-// Human amount + ticker, e.g. "0.98010000 sats" -> "0.9801 BTC".
-export function formatAssetAmount(amount, assetCode) {
+// Human amount + ticker, e.g. 98010000 -> "0.9801 BTC" (or "98010000 SAT" when
+// the user picked sats). `network: true` appends the chain — both bitcoin legs
+// read "BTC", so anywhere the selector is not on screen has to say which one.
+export function formatAssetAmount(amount, assetCode, options = {}) {
+    const { btcUnit = DEFAULT_BTC_UNIT, network = false } = options;
     const asset = assetOf(assetCode);
     if (!asset) {
         return "—";
     }
-    const human = fromBaseUnits(amount, asset.decimals);
-    return human === null ? "—" : `${human} ${asset.symbol}`;
+    const human = fromBaseUnits(amount, displayDecimals(assetCode, btcUnit));
+    if (human === null) {
+        return "—";
+    }
+    const suffix = network ? ` · ${asset.network}` : "";
+    return `${human} ${displaySymbol(assetCode, btcUnit)}${suffix}`;
 }
 
 // 100 bps -> "1%". Kept out of the components so the quote card and the
@@ -156,7 +230,8 @@ export function Overline({ children, color = "$neutral11", size = 11 }) {
 }
 
 // Large mono number field; the border turns pink on focus and the ticker is
-// pinned to the right edge.
+// pinned to the right edge. Pass `onUnitPress` to turn that ticker into a
+// button (used to flip BTC <-> SAT); without it the ticker is plain text.
 export function AmountField({
     value,
     onChange,
@@ -165,6 +240,8 @@ export function AmountField({
     autoFocus,
     ariaLabel,
     readOnly,
+    onUnitPress,
+    unitAriaLabel,
 }) {
     const [focus, setFocus] = useState(false);
     return (
@@ -198,11 +275,47 @@ export function AmountField({
                 focusVisibleStyle={{ outlineWidth: 0 }}
                 style={mono(24, { fontWeight: 500 })}
             />
-            {unit ? (
-                <Paragraph color={"$neutral10"} style={mono(14)}>
-                    {unit}
-                </Paragraph>
-            ) : null}
+            {unit ? <UnitChip unit={unit} onPress={onUnitPress} ariaLabel={unitAriaLabel} /> : null}
+        </XStack>
+    );
+}
+
+// The ticker at the right edge of an amount field. Clickable only for the legs
+// that have a second denomination; otherwise it is inert text so nothing
+// suggests a toggle that does not exist.
+function UnitChip({ unit, onPress, ariaLabel }) {
+    if (!onPress) {
+        return (
+            <Paragraph color={"$neutral10"} style={mono(14)}>
+                {unit}
+            </Paragraph>
+        );
+    }
+    return (
+        <XStack
+            tag="button"
+            role="button"
+            type="button"
+            aria-label={ariaLabel}
+            onPress={onPress}
+            alignItems="center"
+            gap={"$1"}
+            height={28}
+            paddingHorizontal={"$2"}
+            borderRadius={"$8"}
+            borderWidth={"$1"}
+            borderColor={"$neutral8"}
+            backgroundColor={"transparent"}
+            hoverStyle={{ borderColor: "$pink500" }}
+            pressStyle={{ borderColor: "$pink500", opacity: 0.85 }}
+            style={{ cursor: "pointer" }}
+        >
+            <Paragraph color={"$brandOffWhite"} style={mono(13, { fontWeight: 600 })}>
+                {unit}
+            </Paragraph>
+            <Paragraph color={"$brandMint"} style={mono(10, { lineHeight: "10px" })}>
+                ⇄
+            </Paragraph>
         </XStack>
     );
 }

@@ -118,7 +118,7 @@ function Stepper({ t, status, confirmations, requiredConfirmations }) {
 
 // Phase 3: the deposit instructions and the live status of an existing swap.
 // Polling happens in pages/swaps; this component only renders what it is given.
-export default function SwapStatus({ t, swap, loading, errorText, onNewSwap }) {
+export default function SwapStatus({ t, swap, btcUnit, loading, errorText, onNewSwap }) {
     const isWaiting = Boolean(swap) && swap.status === "WAITING_DEPOSIT";
     const countdown = useCountdown(swap && swap.expires_at, isWaiting);
 
@@ -194,7 +194,7 @@ export default function SwapStatus({ t, swap, loading, errorText, onNewSwap }) {
                     <YStack width={"100%"} gap={"$1.5"}>
                         <Overline>{t.status.sendExactly}</Overline>
                         <Paragraph color={"$brandOffWhite"} style={mono(22, { fontWeight: 600 })}>
-                            {formatAssetAmount(swap.amount_in_expected, swap.from)}
+                            {formatAssetAmount(swap.amount_in_expected, swap.from, { btcUnit })}
                         </Paragraph>
                         <Paragraph color={"$neutral11"} style={sans(12)}>
                             {fromAsset ? fromAsset.network : ""}
@@ -252,11 +252,17 @@ export default function SwapStatus({ t, swap, loading, errorText, onNewSwap }) {
             >
                 <BreakdownRow
                     label={t.quote.youSend}
-                    value={formatAssetAmount(swap.amount_in_expected, swap.from)}
+                    value={formatAssetAmount(swap.amount_in_expected, swap.from, {
+                        btcUnit,
+                        network: true,
+                    })}
                 />
                 <BreakdownRow
                     label={t.status.youReceive}
-                    value={formatAssetAmount(swap.amount_out_quoted, swap.to)}
+                    value={formatAssetAmount(swap.amount_out_quoted, swap.to, {
+                        btcUnit,
+                        network: true,
+                    })}
                 />
                 {swap.deposit_txid ? (
                     <BreakdownRow

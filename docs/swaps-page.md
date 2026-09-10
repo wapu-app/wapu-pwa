@@ -31,13 +31,29 @@ floored, never rounded up.
 The page is a single card with three phases plus a language pill at the very top.
 
 1. **Quote** (`components/Swaps/QuoteCard.jsx`) — asset selectors for both legs,
-   an amount field, a direction switch, and the live quote breakdown (amount
-   out, rate, fee %, minimum, validity, required confirmations). The backend
-   also returns `spread_bps`, but the page never shows it: the spread is
-   already reflected in the quoted rate and is not user-facing. The
-   quote request is debounced ~500 ms on any change of `from`, `to` or `amount`.
+   **two editable amount fields**, a direction switch, and the live quote
+   breakdown (amount out, rate, fee %, minimum, validity, required
+   confirmations). The backend also returns `spread_bps`, but the page never
+   shows it: the spread is already reflected in the quoted rate and is not
+   user-facing. The quote request is debounced ~500 ms.
    `liquidity_ok: false` still renders the quote but shows an amber banner and
    disables the CTA.
+
+   **Either side can be pinned.** Typing in *you send* prices forward; typing in
+   *you get* ("I want to receive 1 BTC") sends `amount_out` instead and the
+   backend solves for the input — see `docs/swaps.md` in survivors. Page state
+   keeps `side` (`"in"`/`"out"`) and mirrors the answer into the other field;
+   only the pinned text is a dependency of the fetch, so mirroring never
+   triggers a second round trip.
+
+   **BTC / SAT.** Both bitcoin legs (Bitcoin *and* Liquid) carry the ticker
+   `BTC` inside the amount box — the network is already named in the selector
+   right above it — and that ticker is a button flipping the whole card between
+   BTC and sats. It is one preference for both fields, persisted in
+   `localStorage` under `wapu.swaps.btcUnit`; `convertUnitText` rewrites what is
+   typed so the value never changes under the user. Since both legs then read
+   "BTC", anywhere the selector is not on screen (summaries, status) formats
+   amounts with `{ network: true }` → `0.9801 BTC · Liquid`.
 2. **Addresses** (`components/Swaps/AddressForm.jsx`) — payout address on the
    `to` network and refund address on the `from` network, validated client-side
    against loose mirrors of the backend patterns (EVM `0x…40 hex`, Bitcoin
