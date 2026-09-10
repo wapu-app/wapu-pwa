@@ -15,6 +15,7 @@ export const isAnAuthablePage = (pathname) => {
         "/login",
         "/newSignUp",
         "/version",
+        "/swaps",
     ];
     return !noAuthRequiredPaths.includes(pathname);
 };
