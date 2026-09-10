@@ -15,6 +15,7 @@ import {
     displaySymbol,
     formatAssetAmount,
     formatBps,
+    formatRate,
     hasUnitToggle,
     mono,
     sans,
@@ -53,9 +54,10 @@ export default function QuoteCard({
     const amountOutText =
         quote && toAsset ? formatAssetAmount(quote.amount_out, to, { btcUnit }) : "—";
     // The rate is always quoted per whole coin: sats-per-sat would read "1".
+    const rateValue = quote ? formatRate(quote.rate, to) : null;
     const rateText =
-        quote && quote.rate && fromAsset && toAsset
-            ? `1 ${fromAsset.symbol} ≈ ${quote.rate} ${toAsset.symbol}`
+        rateValue && fromAsset && toAsset
+            ? `1 ${fromAsset.symbol} ≈ ${rateValue} ${toAsset.symbol}`
             : "—";
     const minText = quote
         ? formatAssetAmount(quote.min_amount_in, from, { btcUnit })

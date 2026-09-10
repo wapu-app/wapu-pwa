@@ -7,6 +7,7 @@ import {
     displaySymbol,
     formatAssetAmount,
     formatBps,
+    formatRate,
     fromBaseUnits,
     hasUnitToggle,
     isValidAddressFor,
@@ -50,6 +51,31 @@ describe("swaps primitives — base unit math", () => {
         expect(formatAssetAmount(98010000, "BTC", { network: true })).toBe(
             "0.9801 BTC · Bitcoin"
         );
+    });
+
+    it("caps the displayed rate at satoshi precision for bitcoin", () => {
+        // What the backend actually sends for USDT -> BTC.
+        expect(
+            formatRate("0.00001202832429805706477613484233", "BTC")
+        ).toBe("0.00001202");
+        expect(formatRate("0.00001202832429805706477613484233", "LBTC")).toBe(
+            "0.00001202"
+        );
+        expect(formatRate("1", "BTC")).toBe("1");
+    });
+
+    it("caps the displayed rate at cents for USDT", () => {
+        expect(formatRate("77545.66", "USDT_ETHEREUM")).toBe("77545.66");
+        expect(formatRate("26767.6142857", "USDT_LIQUID")).toBe("26767.61");
+        expect(formatRate("26767.60000", "USDT_POLYGON")).toBe("26767.6");
+        expect(formatRate("26767", "USDT_POLYGON")).toBe("26767");
+    });
+
+    it("returns null for a rate it cannot render", () => {
+        expect(formatRate(null, "BTC")).toBeNull();
+        expect(formatRate(undefined, "BTC")).toBeNull();
+        expect(formatRate("abc", "BTC")).toBeNull();
+        expect(formatRate("1", "NOPE")).toBeNull();
     });
 
     it("turns basis points into percentages", () => {

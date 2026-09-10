@@ -250,6 +250,20 @@ describe("SwapsPage", () => {
         expect(screen.getByText("0.9801 BTC · Bitcoin")).toBeInTheDocument();
     });
 
+    it("shortens the raw backend rate to the destination's precision", async () => {
+        const user = userEvent.setup();
+        mocks.getSwapQuote.mockResolvedValue(
+            quoteOk({ rate: "0.00001202832429805706477613484233" })
+        );
+        renderWithTamagui(<SwapsPage />);
+
+        await typeAmount(user, "1");
+
+        expect(
+            await screen.findByText("1 BTC ≈ 0.00001202 BTC")
+        ).toBeInTheDocument();
+    });
+
     it("warns and blocks the CTA when there is no liquidity", async () => {
         const user = userEvent.setup();
         mocks.getSwapQuote.mockResolvedValue(

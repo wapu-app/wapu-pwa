@@ -182,6 +182,30 @@ export function formatAssetAmount(amount, assetCode, options = {}) {
     return `${human} ${displaySymbol(assetCode, btcUnit)}${suffix}`;
 }
 
+// How many decimals a *price* is worth showing in, per destination asset. The
+// backend sends the raw Decimal ("0.00001202832429805706477613484233"), which
+// is right for settling and unreadable on screen: a bitcoin price is
+// meaningful down to the satoshi, a dollar price down to the cent.
+const RATE_DECIMALS = { btc: 8, usdt: 2 };
+
+// "1 USDT ≈ 0.00001202 BTC". Truncates rather than rounds, like every other
+// amount in the flow, and drops trailing zeros. Returns null when the rate is
+// missing or not a plain decimal, so the caller can fall back to "—".
+export function formatRate(rate, toAssetCode) {
+    const asset = assetOf(toAssetCode);
+    if (!asset || rate === null || rate === undefined) {
+        return null;
+    }
+    const text = String(rate).trim();
+    if (!/^\d+(\.\d+)?$/.test(text)) {
+        return null;
+    }
+    const decimals = RATE_DECIMALS[asset.denomination === "btc" ? "btc" : "usdt"];
+    const [whole, fraction = ""] = text.split(".");
+    const kept = fraction.slice(0, decimals).replace(/0+$/, "");
+    return kept ? `${whole}.${kept}` : whole;
+}
+
 // 100 bps -> "1%". Kept out of the components so the quote card and the
 // summary can't drift apart.
 export function formatBps(bps) {
