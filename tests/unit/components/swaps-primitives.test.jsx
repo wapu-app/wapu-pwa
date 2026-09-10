@@ -5,6 +5,7 @@ import {
     convertUnitText,
     displayDecimals,
     displaySymbol,
+    effectiveRate,
     formatAssetAmount,
     formatBps,
     formatRate,
@@ -69,6 +70,33 @@ describe("swaps primitives — base unit math", () => {
         expect(formatRate("26767.6142857", "USDT_LIQUID")).toBe("26767.61");
         expect(formatRate("26767.60000", "USDT_POLYGON")).toBe("26767.6");
         expect(formatRate("26767", "USDT_POLYGON")).toBe("26767");
+    });
+
+    it("derives the rate the user actually gets, fee and spread included", () => {
+        // 1 L-BTC in, 0.9801 BTC out: the base rate is 1, the effective one is not.
+        expect(
+            formatRate(effectiveRate(100000000, 98010000, "LBTC", "BTC"), "BTC")
+        ).toBe("0.9801");
+        // Cross-decimals: 0.00131575 BTC -> 100.000291 USDT (8 dec -> 6 dec).
+        expect(
+            formatRate(
+                effectiveRate(131575, 100000291, "BTC", "USDT_ETHEREUM"),
+                "USDT_ETHEREUM"
+            )
+        ).toBe("76002.5");
+        // ...and the other way around, down at satoshi precision.
+        expect(
+            formatRate(
+                effectiveRate(100000000, 1202832, "USDT_ETHEREUM", "BTC"),
+                "BTC"
+            )
+        ).toBe("0.00012028");
+    });
+
+    it("has no effective rate without a usable pair of amounts", () => {
+        expect(effectiveRate(0, 98010000, "LBTC", "BTC")).toBeNull();
+        expect(effectiveRate(null, 98010000, "LBTC", "BTC")).toBeNull();
+        expect(effectiveRate(100000000, 98010000, "LBTC", "NOPE")).toBeNull();
     });
 
     it("returns null for a rate it cannot render", () => {

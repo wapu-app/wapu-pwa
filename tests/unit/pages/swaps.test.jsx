@@ -129,7 +129,7 @@ describe("SwapsPage", () => {
         renderWithTamagui(<SwapsPage />);
 
         expect(
-            screen.getByText("Intercambiá cripto en minutos")
+            screen.getByText("Intercambiá Bitcoin en minutos")
         ).toBeInTheDocument();
         expect(screen.getByLabelText("Monto a enviar")).toBeInTheDocument();
         expect(
@@ -250,17 +250,32 @@ describe("SwapsPage", () => {
         expect(screen.getByText("0.9801 BTC · Bitcoin")).toBeInTheDocument();
     });
 
-    it("shortens the raw backend rate to the destination's precision", async () => {
+    it("shows the all-in rate with tickers that tell the two legs apart", async () => {
         const user = userEvent.setup();
-        mocks.getSwapQuote.mockResolvedValue(
-            quoteOk({ rate: "0.00001202832429805706477613484233" })
-        );
+        // The backend's own `rate` is the base one (1 for L-BTC <-> BTC) and is
+        // deliberately ignored: the row has to agree with the payout.
+        mocks.getSwapQuote.mockResolvedValue(quoteOk({ rate: "1" }));
         renderWithTamagui(<SwapsPage />);
 
         await typeAmount(user, "1");
 
         expect(
-            await screen.findByText("1 BTC ≈ 0.00001202 BTC")
+            await screen.findByText("1 L-BTC ≈ 0.9801 BTC")
+        ).toBeInTheDocument();
+    });
+
+    it("caps a non-terminating rate at the destination's precision", async () => {
+        const user = userEvent.setup();
+        // 3 L-BTC in, 1 BTC out: the ratio never terminates.
+        mocks.getSwapQuote.mockResolvedValue(
+            quoteOk({ amount_in: 300000000, amount_out: 100000000 })
+        );
+        renderWithTamagui(<SwapsPage />);
+
+        await typeAmount(user, "3");
+
+        expect(
+            await screen.findByText("1 L-BTC ≈ 0.33333333 BTC")
         ).toBeInTheDocument();
     });
 
@@ -402,13 +417,13 @@ describe("SwapsPage", () => {
         renderWithTamagui(<SwapsPage />);
 
         expect(
-            screen.getByText("Intercambiá cripto en minutos")
+            screen.getByText("Intercambiá Bitcoin en minutos")
         ).toBeInTheDocument();
 
         await user.click(screen.getByRole("button", { name: "EN" }));
 
         expect(
-            await screen.findByText("Swap crypto in minutes")
+            await screen.findByText("Swap Bitcoin in minutes")
         ).toBeInTheDocument();
         expect(screen.getByLabelText("Amount to send")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /continue/i })).toBeInTheDocument();
@@ -420,7 +435,7 @@ describe("SwapsPage", () => {
         renderWithTamagui(<SwapsPage />);
 
         expect(
-            await screen.findByText("Swap crypto in minutes")
+            await screen.findByText("Swap Bitcoin in minutes")
         ).toBeInTheDocument();
     });
 });

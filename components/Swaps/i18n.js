@@ -15,7 +15,7 @@ export const TRANSLATIONS = {
     es: {
         langLabel: "Idioma",
         badge: "Intercambio cripto",
-        title: "Intercambiá cripto en minutos",
+        title: "Intercambiá Bitcoin en minutos",
         subtitle:
             "Sin cuenta, sin custodia prolongada. Cotizá, enviá el depósito y recibí en la red que elijas.",
 
@@ -27,8 +27,8 @@ export const TRANSLATIONS = {
             unitAria: (unit) => `Mostrar los montos en ${unit}`,
             switchAria: "Invertir el par",
             loading: "Calculando cotización…",
-            rate: "Tasa",
-            fee: "Comisión",
+            rate: "Tasa efectiva",
+            fee: "Comisión (ya incluida)",
             minAmount: "Mínimo",
             expiration: "Validez",
             confirmations: "Confirmaciones",
@@ -117,7 +117,7 @@ export const TRANSLATIONS = {
     en: {
         langLabel: "Language",
         badge: "Crypto swap",
-        title: "Swap crypto in minutes",
+        title: "Swap Bitcoin in minutes",
         subtitle:
             "No account, no long custody. Get a quote, send the deposit and receive on the network you pick.",
 
@@ -129,8 +129,8 @@ export const TRANSLATIONS = {
             unitAria: (unit) => `Show amounts in ${unit}`,
             switchAria: "Reverse the pair",
             loading: "Fetching quote…",
-            rate: "Rate",
-            fee: "Fee",
+            rate: "Effective rate",
+            fee: "Fee (already included)",
             minAmount: "Minimum",
             expiration: "Valid for",
             confirmations: "Confirmations",

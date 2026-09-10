@@ -46,6 +46,17 @@ The page is a single card with three phases plus a language pill at the very top
    only the pinned text is a dependency of the fetch, so mirroring never
    triggers a second round trip.
 
+   **The rate row is the effective one.** `quote.rate` is the *base* rate,
+   before fee and spread — printing it next to the payout reads as a lie (1
+   L-BTC "at rate 1" that pays out 0.9801 BTC). `effectiveRate()` derives
+   `amount_out / amount_in` from the quote's own amounts with BigInt (float
+   division surfaces as `0.98009999…` once truncated), so the row can never
+   disagree with the *you get* figure, and `formatRate()` then caps it at the
+   destination's precision — 8 decimals into bitcoin, 2 into USDT. Because it
+   is all-in, the labels say so: "Tasa efectiva" / "Comisión (ya incluida)".
+   The row uses `asset.ticker` (`L-BTC`, `USDT Ethereum`, …) rather than
+   `asset.symbol`, since "1 BTC ≈ 1 BTC" would be nonsense.
+
    **BTC / SAT.** Both bitcoin legs (Bitcoin *and* Liquid) carry the ticker
    `BTC` inside the amount box — the network is already named in the selector
    right above it — and that ticker is a button flipping the whole card between

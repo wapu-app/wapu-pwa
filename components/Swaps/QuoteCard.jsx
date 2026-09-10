@@ -13,6 +13,7 @@ import {
     WarningBanner,
     assetOf,
     displaySymbol,
+    effectiveRate,
     formatAssetAmount,
     formatBps,
     formatRate,
@@ -53,11 +54,14 @@ export default function QuoteCard({
 
     const amountOutText =
         quote && toAsset ? formatAssetAmount(quote.amount_out, to, { btcUnit }) : "—";
-    // The rate is always quoted per whole coin: sats-per-sat would read "1".
-    const rateValue = quote ? formatRate(quote.rate, to) : null;
+    // Per whole coin (sats-per-sat would read "1"), all-in, and with the
+    // unambiguous tickers so an L-BTC/BTC pair does not read "1 BTC ≈ 1 BTC".
+    const rateValue = quote
+        ? formatRate(effectiveRate(quote.amount_in, quote.amount_out, from, to), to)
+        : null;
     const rateText =
         rateValue && fromAsset && toAsset
-            ? `1 ${fromAsset.symbol} ≈ ${rateValue} ${toAsset.symbol}`
+            ? `1 ${fromAsset.ticker} ≈ ${rateValue} ${toAsset.ticker}`
             : "—";
     const minText = quote
         ? formatAssetAmount(quote.min_amount_in, from, { btcUnit })

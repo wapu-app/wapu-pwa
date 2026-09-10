@@ -14,10 +14,12 @@ import { GEIST, GEIST_MONO } from "../../utils/fonts";
 // The wire speaks integer base units and opaque asset codes; the UI speaks
 // human amounts and network names. This table is the only place that maps
 // between the two.
-// The ticker is intentionally plain "BTC" for both bitcoin legs: the network
+// `symbol` is intentionally plain "BTC" for both bitcoin legs: the network
 // ("Bitcoin" / "Liquid") is already spelled out in the selector right above the
-// field, so repeating it inside the amount box only makes the number harder to
-// read. `family` is what the code branches on, never the symbol.
+// amount box, so repeating it there only makes the number harder to read.
+// `ticker` is the unambiguous short name for lines that stand on their own —
+// the rate, where "1 BTC ≈ 1 BTC" would be nonsense. `family` is what the code
+// branches on, never the symbol.
 // `denomination: "btc"` marks the legs whose amounts can be typed and read
 // either in BTC or in satoshis (the base unit is the satoshi in both cases, so
 // the switch is purely a display-decimals change).
@@ -25,6 +27,7 @@ export const ASSETS = {
     BTC: {
         code: "BTC",
         symbol: "BTC",
+        ticker: "BTC",
         network: "Bitcoin",
         decimals: 8,
         family: "bitcoin",
@@ -33,6 +36,7 @@ export const ASSETS = {
     LBTC: {
         code: "LBTC",
         symbol: "BTC",
+        ticker: "L-BTC",
         network: "Liquid",
         decimals: 8,
         family: "liquid",
@@ -41,6 +45,7 @@ export const ASSETS = {
     USDT_LIQUID: {
         code: "USDT_LIQUID",
         symbol: "USDT",
+        ticker: "USDT Liquid",
         network: "Liquid",
         decimals: 8,
         family: "liquid",
@@ -48,6 +53,7 @@ export const ASSETS = {
     USDT_ETHEREUM: {
         code: "USDT_ETHEREUM",
         symbol: "USDT",
+        ticker: "USDT Ethereum",
         network: "Ethereum",
         decimals: 6,
         family: "evm",
@@ -55,6 +61,7 @@ export const ASSETS = {
     USDT_POLYGON: {
         code: "USDT_POLYGON",
         symbol: "USDT",
+        ticker: "USDT Polygon",
         network: "Polygon",
         decimals: 6,
         family: "evm",
@@ -187,6 +194,40 @@ export function formatAssetAmount(amount, assetCode, options = {}) {
 // is right for settling and unreadable on screen: a bitcoin price is
 // meaningful down to the satoshi, a dollar price down to the cent.
 const RATE_DECIMALS = { btc: 8, usdt: 2 };
+
+// Working precision for the effective-rate division, wide enough that
+// truncating to RATE_DECIMALS afterwards is exact.
+const RATE_WORKING_DECIMALS = 18;
+
+// The rate the user actually gets, derived from the quote's own two amounts:
+// `amount_out / amount_in`, corrected for each leg's decimals. `quote.rate` is
+// the *base* rate before fee and spread, so showing it reads as a lie next to
+// the payout (1 L-BTC "at rate 1" that pays out 0.9801 BTC). Deriving it from
+// the amounts also means this line can never disagree with the "you get" one.
+//
+// Integer math via BigInt: the float division would surface as 0.98009999… the
+// moment we truncate.
+export function effectiveRate(amountIn, amountOut, fromCode, toCode) {
+    const fromAsset = assetOf(fromCode);
+    const toAsset = assetOf(toCode);
+    if (!fromAsset || !toAsset) {
+        return null;
+    }
+    const inUnits = Number(amountIn);
+    const outUnits = Number(amountOut);
+    if (!Number.isFinite(inUnits) || !Number.isFinite(outUnits) || inUnits <= 0) {
+        return null;
+    }
+    const numerator =
+        BigInt(Math.trunc(outUnits)) *
+        10n ** BigInt(fromAsset.decimals + RATE_WORKING_DECIMALS);
+    const denominator = BigInt(Math.trunc(inUnits)) * 10n ** BigInt(toAsset.decimals);
+    const scaled = (numerator / denominator).toString();
+    const digits = scaled.padStart(RATE_WORKING_DECIMALS + 1, "0");
+    const whole = digits.slice(0, digits.length - RATE_WORKING_DECIMALS);
+    const fraction = digits.slice(digits.length - RATE_WORKING_DECIMALS);
+    return `${whole}.${fraction}`;
+}
 
 // "1 USDT ≈ 0.00001202 BTC". Truncates rather than rounds, like every other
 // amount in the flow, and drops trailing zeros. Returns null when the rate is
