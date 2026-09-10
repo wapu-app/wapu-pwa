@@ -36,7 +36,8 @@ export const Header = () => {
         "/newAlternativeDeposit",
         "/newWithdrawal",
         "/newBlockchainDeposit",
-        "/bitcoinDeposit"
+        "/bitcoinDeposit",
+        "/swaps"
     ];
     const helpButtonPath = ["/qrPayment"];
     useEffect(() => {

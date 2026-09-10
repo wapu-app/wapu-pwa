@@ -1,0 +1,99 @@
+import { describe, expect, it } from "vitest";
+
+import {
+    ASSET_OPTIONS,
+    formatAssetAmount,
+    formatBps,
+    fromBaseUnits,
+    isValidAddressFor,
+    shortenHash,
+    toBaseUnits,
+} from "../../../components/Swaps/primitives";
+
+describe("swaps primitives — base unit math", () => {
+    it("parses human amounts into integer base units", () => {
+        expect(toBaseUnits("1", 8)).toBe(100000000);
+        expect(toBaseUnits("0.015", 8)).toBe(1500000);
+        expect(toBaseUnits("12.5", 6)).toBe(12500000);
+        expect(toBaseUnits("", 8)).toBeNull();
+        expect(toBaseUnits("abc", 8)).toBeNull();
+        expect(toBaseUnits(".", 8)).toBeNull();
+    });
+
+    it("floors extra fractional digits instead of rounding up", () => {
+        expect(toBaseUnits("1.9999999999", 6)).toBe(1999999);
+    });
+
+    it("renders base units back as human amounts without trailing zeros", () => {
+        expect(fromBaseUnits(100000000, 8)).toBe("1");
+        expect(fromBaseUnits(98010000, 8)).toBe("0.9801");
+        expect(fromBaseUnits(10000, 8)).toBe("0.0001");
+        expect(fromBaseUnits(1500000, 6)).toBe("1.5");
+        expect(fromBaseUnits(null, 8)).toBeNull();
+    });
+
+    it("labels amounts with the asset ticker", () => {
+        expect(formatAssetAmount(98010000, "BTC")).toBe("0.9801 BTC");
+        expect(formatAssetAmount(2500000, "USDT_POLYGON")).toBe("2.5 USDT");
+        expect(formatAssetAmount(1, "NOPE")).toBe("—");
+    });
+
+    it("turns basis points into percentages", () => {
+        expect(formatBps(100)).toBe("1%");
+        expect(formatBps(0)).toBe("0%");
+        expect(formatBps(25)).toBe("0.25%");
+        expect(formatBps(null)).toBe("—");
+    });
+
+    it("middle-truncates long hashes", () => {
+        expect(shortenHash("short")).toBe("short");
+        expect(shortenHash("a".repeat(40))).toContain("…");
+    });
+});
+
+describe("swaps primitives — address validation", () => {
+    it("accepts addresses for the matching network family", () => {
+        expect(
+            isValidAddressFor(
+                "BTC",
+                "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4"
+            )
+        ).toBe(true);
+        expect(isValidAddressFor("LBTC", "lq1qqw508d6qejxtdg4y5r3zarvary0")).toBe(
+            true
+        );
+        expect(
+            isValidAddressFor(
+                "USDT_ETHEREUM",
+                "0x52908400098527886E0F7030069857D2E4169EE7"
+            )
+        ).toBe(true);
+    });
+
+    it("rejects addresses from the wrong network", () => {
+        expect(
+            isValidAddressFor(
+                "BTC",
+                "0x52908400098527886E0F7030069857D2E4169EE7"
+            )
+        ).toBe(false);
+        expect(
+            isValidAddressFor(
+                "USDT_POLYGON",
+                "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4"
+            )
+        ).toBe(false);
+        expect(isValidAddressFor("LBTC", "")).toBe(false);
+        expect(isValidAddressFor("UNKNOWN", "whatever")).toBe(false);
+    });
+
+    it("exposes one select option per supported leg", () => {
+        expect(ASSET_OPTIONS.map((option) => option.value)).toEqual([
+            "BTC",
+            "LBTC",
+            "USDT_LIQUID",
+            "USDT_ETHEREUM",
+            "USDT_POLYGON",
+        ]);
+    });
+});
