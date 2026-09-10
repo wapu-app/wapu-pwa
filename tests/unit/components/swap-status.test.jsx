@@ -120,11 +120,14 @@ describe("SwapStatus — copy affordances", () => {
     it("copies the full txid, not the shortened one on screen", async () => {
         renderStatus();
 
+        // Last-called, not called-at-all: the deposit hash stays in the mock's
+        // history, so a payout button wired to the wrong row would still
+        // satisfy toHaveBeenCalledWith.
         await clickCopy(t.status.depositTxid);
-        expect(clipboard.writeText).toHaveBeenCalledWith(LIQUID_TXID);
+        expect(clipboard.writeText).toHaveBeenLastCalledWith(LIQUID_TXID);
 
         await clickCopy(t.status.payoutTxid);
-        expect(clipboard.writeText).toHaveBeenCalledWith(BITCOIN_TXID);
+        expect(clipboard.writeText).toHaveBeenLastCalledWith(BITCOIN_TXID);
     });
 
     it("copies the whole swap id, which is what a claim needs", async () => {
@@ -133,7 +136,7 @@ describe("SwapStatus — copy affordances", () => {
         expect(screen.getByText(shortenHash(SWAP.swap_id, 8, 6))).toBeInTheDocument();
 
         await clickCopy(t.status.swapId);
-        expect(clipboard.writeText).toHaveBeenCalledWith(SWAP.swap_id);
+        expect(clipboard.writeText).toHaveBeenLastCalledWith(SWAP.swap_id);
     });
 
     it("names every copy button after what it copies", () => {
