@@ -32,7 +32,9 @@ The page is a single card with three phases plus a language pill at the very top
 
 1. **Quote** (`components/Swaps/QuoteCard.jsx`) — asset selectors for both legs,
    an amount field, a direction switch, and the live quote breakdown (amount
-   out, rate, fee %, spread %, minimum, validity, required confirmations). The
+   out, rate, fee %, minimum, validity, required confirmations). The backend
+   also returns `spread_bps`, but the page never shows it: the spread is
+   already reflected in the quoted rate and is not user-facing. The
    quote request is debounced ~500 ms on any change of `from`, `to` or `amount`.
    `liquidity_ok: false` still renders the quote but shows an amber banner and
    disables the CTA.

@@ -171,10 +171,6 @@ export default function QuoteCard({
                     label={t.quote.fee}
                     value={quote ? formatBps(quote.fee_bps) : "—"}
                 />
-                <BreakdownRow
-                    label={t.quote.spread}
-                    value={quote ? formatBps(quote.spread_bps) : "—"}
-                />
                 <BreakdownRow label={t.quote.minAmount} value={minText} />
                 <BreakdownRow label={t.quote.expiration} value={expirationText} />
                 <BreakdownRow label={t.quote.confirmations} value={confirmationsText} />

@@ -147,8 +147,10 @@ describe("SwapsPage", () => {
             { timeout: 3000 }
         );
         expect(await screen.findByText("0.9801 BTC")).toBeInTheDocument();
-        // Fee and spread come as basis points and render as percentages.
+        // The fee comes as basis points and renders as a percentage. The spread
+        // is deliberately not shown: it is already baked into the quoted rate.
         expect(screen.getAllByText("1%").length).toBeGreaterThan(0);
+        expect(screen.queryByText(/spread/i)).not.toBeInTheDocument();
     });
 
     it("warns and blocks the CTA when there is no liquidity", async () => {

@@ -138,10 +138,6 @@ export default function AddressForm({
                         value={formatAssetAmount(quote.amount_out, to)}
                     />
                     <BreakdownRow label={t.quote.fee} value={formatBps(quote.fee_bps)} />
-                    <BreakdownRow
-                        label={t.quote.spread}
-                        value={formatBps(quote.spread_bps)}
-                    />
                 </YStack>
             ) : null}
 
