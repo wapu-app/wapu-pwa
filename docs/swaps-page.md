@@ -76,6 +76,24 @@ The page is a single card with three phases plus a language pill at the very top
    done) showing `x/N` confirmations. Terminal failure states render the refund
    notice, `refund_txid` and `error_note`.
 
+   **Hashes are shortened on screen but whole underneath.** Every txid and the
+   swap id itself carry a `CopyButton` that copies the full string — the swap
+   id is what a user quotes back to support when a swap goes wrong, and a
+   truncated one is worthless there. Each txid is also a link to its chain's
+   explorer, from `explorerTxUrl()` and the `explorer` prefix in `ASSETS`
+   (`blockstream.info/tx`, `blockstream.info/liquid/tx`, `etherscan.io/tx`,
+   `polygonscan.com/tx`). The prefix is per-asset, not per-`family`: the two
+   USDT legs validate addresses identically but settle on different chains.
+   Which chain a hash is on is not in the hash, so the caller passes the leg —
+   `deposit_txid` on `swap.from`, `payout_txid` on `swap.to`, `refund_txid`
+   back out on `swap.from`. **The explorers are mainnet-only**, while
+   `ADDRESS_PATTERNS` still accepts `tb1|bcrt1|ert1`; a testnet deployment
+   would need its own prefixes.
+
+   Five copy buttons can share this card, so each one passes `copyLabel` to
+   `CopyButton` (`"Copiar TXID del depósito"`, …) instead of all being called
+   "Copy", and `copiedLabel` so the confirmation is in the page's language.
+
 The swap id lives in the URL, so refreshing or sharing the link restores phase 3
 directly. "Start a new swap" resets state and pushes `/swaps`.
 

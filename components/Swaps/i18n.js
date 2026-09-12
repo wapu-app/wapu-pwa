@@ -81,6 +81,9 @@ export const TRANSLATIONS = {
             depositTxid: "TXID del depósito",
             payoutTxid: "TXID del pago",
             refundTxid: "TXID del reembolso",
+            copied: "Copiado",
+            copyAria: (what) => `Copiar ${what}`,
+            explorerAria: (what) => `Ver ${what} en el explorador`,
             refundNotice:
                 "Estamos devolviendo tu depósito a la dirección de reembolso.",
             refundedNotice: "El depósito fue devuelto a tu dirección de reembolso.",
@@ -183,6 +186,9 @@ export const TRANSLATIONS = {
             depositTxid: "Deposit TXID",
             payoutTxid: "Payout TXID",
             refundTxid: "Refund TXID",
+            copied: "Copied",
+            copyAria: (what) => `Copy ${what}`,
+            explorerAria: (what) => `View ${what} on the explorer`,
             refundNotice: "We are sending your deposit back to the refund address.",
             refundedNotice: "The deposit was sent back to your refund address.",
             expiredNotice:
