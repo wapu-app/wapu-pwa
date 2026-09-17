@@ -28,7 +28,7 @@ The available environments are:
 
 ## Deploy
 
-We are currently using AWS Amplify to host the Front End. It builds the application, stores the result in a S3 bucket and put it behind a CDN, giving you an automatic generated url. If you're looking how to run the initial deploy, got to `survivors/initial_deploy.md`
+We are currently using AWS Amplify to host the Front End. It builds the application, stores the result in a S3 bucket and put it behind a CDN, giving you an automatic generated url. If you're looking how to run the initial deploy, go to [`initial_deploy.md`](initial_deploy.md) at the root of this repo
 
 Amplify sets a Continuous Deployment process as default, so the deployment is triggered with every commit.
 
