@@ -55,7 +55,13 @@ vi.mock("../../../components/TamaguiInput", () => ({
 }));
 
 vi.mock("../../../components/TamaguiButton", () => ({
-    default: ({ text }: { readonly text: string }) => <button>{text}</button>,
+    default: ({
+        text,
+        onClick,
+    }: {
+        readonly text: string;
+        readonly onClick: () => void;
+    }) => <button onClick={onClick}>{text}</button>,
 }));
 
 vi.mock("../../../components/TamaguiLink", () => ({
@@ -63,11 +69,19 @@ vi.mock("../../../components/TamaguiLink", () => ({
 }));
 
 vi.mock("../../../components/newHeaderButton", () => ({
-    default: ({ children }: { readonly children: string }) => <h1>{children}</h1>,
+    default: ({ children }: { readonly children: string }) => (
+        <h1>{children}</h1>
+    ),
 }));
 
 vi.mock("../../../components/ErrorModal", () => ({
-    default: () => null,
+    default: ({
+        message,
+        state,
+    }: {
+        readonly message: string;
+        readonly state: boolean;
+    }) => (state ? <p role="alert">{message}</p> : null),
 }));
 
 describe("Profile", () => {
@@ -120,5 +134,28 @@ describe("Profile", () => {
             );
         });
         expect(screen.getByRole("button", { name: "Copy" })).toBeVisible();
+    });
+
+    it("shows the NIP-05 eligibility error returned by the API", async () => {
+        const user = userEvent.setup();
+        const eligibilityError =
+            "Debes realizar al menos 1 transacción fiat completada para poder usar la función de NIP-05.";
+        vi.mocked(updateProfile).mockResolvedValue({
+            data: { error: eligibilityError },
+            status: 400,
+        });
+
+        renderWithTamagui(<Profile />);
+
+        await waitFor(() => {
+            expect(screen.getByLabelText("npub")).toHaveValue("");
+        });
+
+        await user.type(screen.getByLabelText("npub"), "npub1example");
+        await user.click(screen.getByRole("button", { name: "Save" }));
+
+        expect(await screen.findByRole("alert")).toHaveTextContent(
+            eligibilityError
+        );
     });
 });
