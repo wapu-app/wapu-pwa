@@ -41,7 +41,7 @@ The page is a single card with three phases plus a language pill at the very top
 
    **Either side can be pinned.** Typing in *you send* prices forward; typing in
    *you get* ("I want to receive 1 BTC") sends `amount_out` instead and the
-   backend solves for the input — see `docs/swaps.md` in survivors. Page state
+   backend solves for the input — see `app_backend/docs/2026-09-10-swaps.md` in the `wapu-app/survivors` repo. Page state
    keeps `side` (`"in"`/`"out"`) and mirrors the answer into the other field;
    only the pinned text is a dependency of the fetch, so mirroring never
    triggers a second round trip.
