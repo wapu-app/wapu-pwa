@@ -128,38 +128,45 @@ function Burger({ newDesign = false, close = null, externalIsOpen = null }) {
                         margin={0}
                         borderRadius={0}
                         borderWidth={0}
-                        padding={"$3.5"}
+                        // No padding here on purpose: NewHeaderButton carries its
+                        // own marginTop, and stacking a container padding plus a
+                        // safe-area inset on top of it pushed the close button —
+                        // and with it the whole menu — down the screen. The
+                        // invitations dialog wraps the header the same way.
+                        padding={0}
                         style={{
                             position: "fixed",
                             top: 0,
                             left: 0,
                             right: 0,
                             bottom: 0,
-                            // calc() keeps the token padding as a floor and only
-                            // adds extra clearance on notched devices, instead of
-                            // env() (0px on non-notched devices) replacing it.
-                            paddingTop: "calc(env(safe-area-inset-top) + 16px)",
-                            paddingBottom:
-                                "calc(env(safe-area-inset-bottom) + 16px)",
+                            paddingTop: "env(safe-area-inset-top)",
+                            paddingBottom: "env(safe-area-inset-bottom)",
                         }}
                     >
                         <YStack flex={1} width={"$width100"} height={"$height100"}>
-                            <NewHeaderButton
-                                isCloseButton
-                                onClick={handleCloseModal}
-                            />
+                            <YStack padding={"$3.5"} width={"$width100"}>
+                                <NewHeaderButton
+                                    isCloseButton
+                                    onClick={handleCloseModal}
+                                />
+                            </YStack>
                             <Text
                                 fontFamily={"$heading"}
                                 fontSize={"$4"}
                                 color={"$neutral13"}
                                 fontWeight={"$2"}
-                                marginTop={"$3.5"}
+                                paddingHorizontal={"$3.5"}
                                 marginBottom={"$2.5"}
                             >
                                 My Account
                             </Text>
                             <ScrollView showsVerticalScrollIndicator={false}>
-                                <YStack gap={"$1"} paddingBottom={"$8"}>
+                                <YStack
+                                    gap={"$1"}
+                                    paddingHorizontal={"$3.5"}
+                                    paddingBottom={"$8"}
+                                >
                                     {user.editProfile && (
                                         <MenuRow
                                             icon={Profile}
