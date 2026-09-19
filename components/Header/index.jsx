@@ -32,6 +32,7 @@ const HIDDEN_PATHS = [
     "/newWithdrawal",
     "/newBlockchainDeposit",
     "/bitcoinDeposit",
+    "/swaps",
     "/profile",
     "/apiKey",
 ];
@@ -45,7 +46,7 @@ export const Header = () => {
     // Derived, not state: with useState(false) + useEffect the first client
     // render always mounted <Burger />, which then unmounted on the next
     // commit — a header flash plus the mount effects Burger carries (getUser,
-    // getSettings, the referral dialog) firing on every hidden route.
+    // getSettings) firing on every hidden route.
     const headerHidden = HIDDEN_PATHS.includes(pathname);
     const helpButtonShow = HELP_BUTTON_PATHS.includes(pathname);
 
