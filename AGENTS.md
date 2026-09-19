@@ -1,16 +1,20 @@
-<!-- Parent: ../AGENTS.md -->
-<!-- Generated: 2025-05-24 -->
+<!-- Generated: 2025-05-24 | Updated: 2026-09-17 -->
+<!-- Cross-repo index: the `wapu-app/tower` repo (root `AGENTS.md`) maps every WapuPay repo and the seams between them. -->
 
-# survivors — React / Next.js Frontend
+# wapu-pwa — React / Next.js Frontend
 
 ## Purpose
 
 Mobile-optimized PWA built with Next.js. Provides the user-facing interface for wallet management, KYC onboarding, deposits, transfers, and payment flows. Communicates exclusively with the Flask backend via `api/api.js`.
 
+This is a standalone repo (`wapu-app/wapu-pwa`). It used to be the `survivors/` directory inside the
+`wapu-app/survivors` monorepo; that split is done. The backend is **not** a sibling directory — it is a
+separate repo reached over HTTPS at `be-{qa,stage,prod}.wapu.app`.
+
 ## Environment Setup
 
 ```bash
-cd survivors
+cd wapu-pwa
 npm install
 npm run env:qa      # or env:local | env:stg | env:prod
 
@@ -166,4 +170,4 @@ UI building blocks. Naming convention: `PascalCase` directories, each containing
 - `moment` — date formatting
 
 ### Internal
-- `app_backend/` — all data comes from the Flask API
+- [`wapu-app/survivors`](https://github.com/wapu-app/survivors) (`app_backend/`) — **separate repo**. All data comes from its Flask API over HTTPS; the base URL per environment lives in `config/environment/`. Never expect it as a local directory.
