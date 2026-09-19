@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, YStack, XStack, Paragraph } from "tamagui";
 
 import TamaguiInput from "../TamaguiInput";
@@ -13,12 +13,16 @@ import { useUserContext } from "../../context/userContext";
 export default function Referral({ isOpen, setIsOpen }) {
     const [email, setEmail] = useState("");
     const [referralLink, setReferralLink] = useState("");
+    const latestRequestId = useRef(0);
     const { user } = useUserContext();
 
     const handleGetReferralCode = async () => {
+        const requestId = ++latestRequestId.current;
         try {
             const { data } = await getReferralCode(email, "");
-            setReferralLink(data.referral_link);
+            if (requestId === latestRequestId.current) {
+                setReferralLink(data.referral_link);
+            }
         } catch (error) {
             console.error(error.message);
         }
