@@ -26,6 +26,7 @@ export default defineConfig({
                 "components/Swaps/*.{js,jsx}",
                 "hooks/useAmountNumpad.jsx",
                 "utils/auth.jsx",
+                "utils/exchangeCalculator.js",
                 "pages/login/index.jsx",
                 "pages/newSignUp/index.jsx",
                 "pages/newDepositChoice/index.jsx",

@@ -54,6 +54,11 @@ type SendFixture = {
     readonly minPaymentAmountArs: number;
     readonly usdtBalance: number;
     readonly rateUsdtArsBuy: number;
+    readonly rates: readonly {
+        readonly pair: string;
+        readonly buy: number;
+        readonly sell: number;
+    }[];
 };
 
 const defaultFixture: SendFixture = {
@@ -64,6 +69,7 @@ const defaultFixture: SendFixture = {
     minPaymentAmountArs: 500,
     usdtBalance: 100,
     rateUsdtArsBuy: 1_000,
+    rates: [{ pair: "USDT/ARS", buy: 1_000, sell: 1_050 }],
 };
 
 function mockSendPage(fixture: SendFixture = defaultFixture): void {
@@ -74,6 +80,7 @@ function mockSendPage(fixture: SendFixture = defaultFixture): void {
             fiatTransferFee: fixture.fiatTransferFee,
             mandatoryAliasValidation: fixture.mandatoryAliasValidation,
             rateUsdtArsBuy: fixture.rateUsdtArsBuy,
+            rates: fixture.rates,
             showRecentFavContacts: false,
             usdtBalance: fixture.usdtBalance,
         },
@@ -206,6 +213,29 @@ describe("newSend ARS flow", () => {
         expect(routerMock.push).toHaveBeenCalledWith(
             "/newTransactionPending?id=fiat-tx-123&transaction_type=fast_fiat_transfer"
         );
+    });
+
+    it("fills the amount with everything the balance can cover on Max", async () => {
+        // combinedBalance mirrors what the backend reports: usdt_balance * buy.
+        mockSendPage({ ...defaultFixture, combinedBalance: 100_000 });
+        const user = userEvent.setup();
+
+        await chooseFastSend(user);
+        await user.type(
+            screen.getByPlaceholderText(/address or wapu id/i),
+            "ada.cvu"
+        );
+        await user.click(screen.getByRole("button", { name: /^next$/i }));
+
+        await user.click(screen.getByRole("button", { name: /^max$/i }));
+
+        // 100 USDT at a 4% fee: funding 96.15, fee 3.85, total 100.00.
+        // The formula this replaces produced 95040 and stranded 1.16 USDT.
+        const amountInput = screen.getByPlaceholderText(
+            /enter amount/i
+        ) as HTMLInputElement;
+        expect(amountInput.value).toBe("96150");
+        expect(screen.getByRole("button", { name: /^next$/i })).toBeEnabled();
     });
 
     it("uses the regular ARS transfer type for standard sends", async () => {

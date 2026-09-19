@@ -155,6 +155,53 @@ export const estimateFromDeposit = ({
     return buildQuote({ fundingUsdt, cryptoCurrency, ...inputs });
 };
 
+// Inverse of buildQuote: the largest fiat amount whose quote still fits inside
+// `balanceUsdt`. The backend debits funding + round2(funding * fee), so the
+// bound is funding = balance / (1 + fee) — NOT balance * (1 - fee), which is
+// what the send screen used to do and is why users kept ending up with change.
+// funding is floored to whole cents so the round trip back through
+// estimateFromFiat (round2, half-up) cannot land above the balance; the short
+// loop only covers the cent that flooring the fiat leg can still leave over.
+export const maxFiatFromBalance = ({
+    balanceUsdt,
+    rates,
+    fiatCurrency,
+    feeFraction,
+}) => {
+    const inputs = resolveInputs({
+        rates,
+        cryptoCurrency: "USDT",
+        fiatCurrency,
+        feeFraction,
+    });
+    const balance = parseFloat(balanceUsdt);
+    if (!inputs || !(Number.isFinite(balance) && balance > 0)) {
+        return null;
+    }
+
+    const fundingUsdt =
+        Math.floor((balance / (1 + inputs.feeFraction)) * 100) / 100;
+    if (!(fundingUsdt > 0)) {
+        return null;
+    }
+
+    let fiatAmount = Math.floor(fundingUsdt * inputs.exchangeRate);
+    for (let step = 0; step < 3 && fiatAmount > 0; step += 1) {
+        const quote = estimateFromFiat({
+            fiatAmount: String(fiatAmount),
+            rates,
+            cryptoCurrency: "USDT",
+            fiatCurrency,
+            feeFraction,
+        });
+        if (quote && quote.totalUsdt <= balance) {
+            return fiatAmount;
+        }
+        fiatAmount -= 1;
+    }
+    return null;
+};
+
 // Fee-free USDT -> sats. Mirrors buildQuote's sat leg exactly (round2 on the
 // USDT side, ceil on the sat side) so a USD-denominated amount lands on the
 // same integer the BTC quote would produce.
