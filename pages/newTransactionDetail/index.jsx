@@ -11,6 +11,8 @@ import NetworkIcon from "../../public/network_icon.svg";
 
 import { getTransaction } from "../../api/api";
 
+const WAPU_LIGHTNING_DOMAIN = "wapu.app";
+
 const StatusBackgroundColor = {
     pending: "$semanticYellow",
     canceled: "$semanticRed",
@@ -229,7 +231,11 @@ export default function index() {
                                         weight={"$1"}
                                         numberOfLines={1}
                                     >
-                                        {movement.alias}
+                                        {movement.type?.toLowerCase() ===
+                                            "send_inner_transf" &&
+                                        movement.receiver_name
+                                            ? `${movement.receiver_name}@${WAPU_LIGHTNING_DOMAIN}`
+                                            : movement.alias}
                                     </Paragraph>
                                 </YStack>
                             </XStack>
