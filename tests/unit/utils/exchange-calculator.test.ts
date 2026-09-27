@@ -46,6 +46,9 @@ describe("maxFiatFromBalance", () => {
             const quote = quoteFor(fiatAmount as number, feeFraction);
             expect(quote).not.toBeNull();
             expect(quote!.totalUsdt).toBeLessThanOrEqual(balanceUsdt);
+            expect(
+                quoteFor((fiatAmount as number) + 1, feeFraction)!.totalUsdt
+            ).toBeGreaterThan(balanceUsdt);
         }
     );
 
@@ -81,6 +84,42 @@ describe("maxFiatFromBalance", () => {
             balanceUsdt
         );
     });
+
+    it.each([
+        [0.01, 0, 1_000, "ARS"],
+        [0.009, 0, 1_000, "ARS"],
+        [1, 0.04, 1_000, "ARS"],
+        [10, 0.035, 5.12, "BRL"],
+        [0.1, 0.5, 5.12, "BRL"],
+        [1, -0.1, 5.12, "BRL"],
+    ])(
+        "matches exhaustive quotes for balance %s, fee %s, rate %s, %s",
+        (balanceUsdt, feeFraction, buy, fiatCurrency) => {
+            const options = {
+                balanceUsdt,
+                feeFraction,
+                rates: [{ pair: `USDT/${fiatCurrency}`, buy }],
+                fiatCurrency,
+            };
+            let expected = null;
+            // Deliberately loose bound, independent of the production search.
+            for (
+                let fiatAmount = 1;
+                fiatAmount <= (balanceUsdt + 1) * buy * 2;
+                fiatAmount++
+            ) {
+                const quote = estimateFromFiat({
+                    ...options,
+                    cryptoCurrency: "USDT",
+                    fiatAmount,
+                });
+                if (quote && quote.totalUsdt <= balanceUsdt) {
+                    expected = fiatAmount;
+                }
+            }
+            expect(maxFiatFromBalance(options)).toBe(expected);
+        }
+    );
 
     it("returns null when the inputs cannot produce a quote", () => {
         expect(maxArs(0, 0.02)).toBeNull();

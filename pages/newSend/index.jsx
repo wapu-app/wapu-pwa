@@ -44,7 +44,6 @@ export default function index() {
     const [errorModalState, setErrorModalState] = useState(false);
     const [buttonText, setButtonText] = useState("Send");
     const [accessToken, setAccessToken] = useState(null);
-    const [fee, setFee] = useState(null);
     const [fastTransferFee, setFastTransferFee] = useState(null);
     const [transferFee, setTransferFee] = useState(null);
     const [minPaymentAmount, setMinPaymentAmount] = useState(null);
@@ -131,23 +130,9 @@ export default function index() {
         setStep(2);
         if (mode) {
             if (mode === "fast") {
-                // user.* carries the per-user fee (referral discount applied),
-                // which is the figure this screen already shows above and the
-                // one the backend will charge. /settings is the public rate and
-                // only stands in until /users/home has resolved.
-                setFee(
-                    typeof user.fastFiatTransferFee === "number"
-                        ? user.fastFiatTransferFee
-                        : fastTransferFee
-                );
                 setTransactionType("fast_fiat_transfer");
                 setButtonText("Fast Send");
             } else {
-                setFee(
-                    typeof user.fiatTransferFee === "number"
-                        ? user.fiatTransferFee
-                        : transferFee
-                );
                 setTransactionType("fiat_transfer");
                 setButtonText("Send Fiat");
             }
@@ -197,6 +182,17 @@ export default function index() {
     };
 
     const maxAmount = () => {
+        // User fees include discounts and can resolve after mode selection.
+        const isFastTransfer = transactionType === "fast_fiat_transfer";
+        const userFee = isFastTransfer
+            ? user.fastFiatTransferFee
+            : user.fiatTransferFee;
+        const fee =
+            typeof userFee === "number"
+                ? userFee
+                : isFastTransfer
+                  ? fastTransferFee
+                  : transferFee;
         // Same quote engine as the home price calculator, run backwards. It
         // reads rate.buy at full precision, unlike user.rateUsdtArsBuy, which
         // the context truncates to 2 decimals.

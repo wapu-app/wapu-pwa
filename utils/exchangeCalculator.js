@@ -155,13 +155,9 @@ export const estimateFromDeposit = ({
     return buildQuote({ fundingUsdt, cryptoCurrency, ...inputs });
 };
 
-// Inverse of buildQuote: the largest fiat amount whose quote still fits inside
-// `balanceUsdt`. The backend debits funding + round2(funding * fee), so the
-// bound is funding = balance / (1 + fee) — NOT balance * (1 - fee), which is
-// what the send screen used to do and is why users kept ending up with change.
-// funding is floored to whole cents so the round trip back through
-// estimateFromFiat (round2, half-up) cannot land above the balance; the short
-// loop only covers the cent that flooring the fiat leg can still leave over.
+// Largest whole fiat amount whose forward quote fits inside `balanceUsdt`.
+// Search the rounded quote itself: algebraically inverting the fee can miss
+// affordable funding cents and the top of a fiat-to-funding rounding plateau.
 export const maxFiatFromBalance = ({
     balanceUsdt,
     rates,
@@ -179,14 +175,25 @@ export const maxFiatFromBalance = ({
         return null;
     }
 
-    const fundingUsdt =
-        Math.floor((balance / (1 + inputs.feeFraction)) * 100) / 100;
-    if (!(fundingUsdt > 0)) {
+    if (inputs.feeFraction <= -1 || !Number.isFinite(inputs.exchangeRate)) {
         return null;
     }
 
-    let fiatAmount = Math.floor(fundingUsdt * inputs.exchangeRate);
-    for (let step = 0; step < 3 && fiatAmount > 0; step += 1) {
+    // Allow a cent for rounding the fee/total and another for rounding funding.
+    // This keeps the upper bound above every affordable forward quote.
+    const upperBound = Math.floor(
+        ((balance + 0.01) / (1 + inputs.feeFraction) + 0.01) *
+            inputs.exchangeRate
+    );
+    if (!Number.isSafeInteger(upperBound)) {
+        return null;
+    }
+
+    let low = 1;
+    let high = upperBound;
+    let maximum = null;
+    while (low <= high) {
+        const fiatAmount = low + Math.floor((high - low) / 2);
         const quote = estimateFromFiat({
             fiatAmount: String(fiatAmount),
             rates,
@@ -194,12 +201,18 @@ export const maxFiatFromBalance = ({
             fiatCurrency,
             feeFraction,
         });
-        if (quote && quote.totalUsdt <= balance) {
-            return fiatAmount;
+        if (!quote || quote.totalUsdt <= balance) {
+            // Tiny fiat amounts may round to zero funding (no quote). Larger
+            // candidates can still produce a positive, affordable quote.
+            if (quote) {
+                maximum = fiatAmount;
+            }
+            low = fiatAmount + 1;
+        } else {
+            high = fiatAmount - 1;
         }
-        fiatAmount -= 1;
     }
-    return null;
+    return maximum;
 };
 
 // Fee-free USDT -> sats. Mirrors buildQuote's sat leg exactly (round2 on the
