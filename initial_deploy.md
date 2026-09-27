@@ -18,7 +18,7 @@ With the Front End we use AWS Amplify, is a service that takes the React/NextJs 
   - You probably need to add the command to select the environment `npm run env:<env>`
   - Also you'll want to add an npm install before it builds
 - Add the environment variables needed
-  - Please, check the `survivors/README.md` file for this.
+  - Please, check the `README.md` file at the root of this repo for this.
 - After that, the process to compile and deploy will start. 
 - Update the deployment script:
   - Add the command to install the dependencies with `npm install` in the prebuild section.

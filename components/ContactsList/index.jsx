@@ -4,6 +4,8 @@ import Image from "next/image";
 import worldIcon from "../../public/worldIcon.svg";
 import { getContacts, toggleContactFavorite, deleteContact } from "../../api/api";
 
+const WAPU_LIGHTNING_DOMAIN = "wapu.app";
+
 export default function ContactsList({ filterBy = null, onContactSelect, selectedContact = null }) {
     const [contacts, setContacts] = useState([]);
     const [contactsLoading, setContactsLoading] = useState(false);
@@ -86,6 +88,10 @@ export default function ContactsList({ filterBy = null, onContactSelect, selecte
     }
 
     function getDisplayAddress(contact) {
+        if (contact.name_label_id && contact.name_label) {
+            return `${contact.name_label}@${WAPU_LIGHTNING_DOMAIN}`;
+        }
+
         const address = getContactAddress(contact);
         
         // For long addresses, show truncated version

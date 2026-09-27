@@ -1,6 +1,6 @@
 # Frontend Routing
 
-This document outlines the routing mechanism used in the survivors frontend application.
+This document outlines the routing mechanism used in the wapu-pwa frontend application.
 
 ## Primary Technology
 
