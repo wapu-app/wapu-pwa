@@ -14,7 +14,8 @@ export default function TamaguiIconButton({
     colorLabel,
     fontSizeLabel,
     fontWeightLabel,
-    style
+    style,
+    ariaLabel
 }) {
     return (
         <YStack
@@ -28,6 +29,7 @@ export default function TamaguiIconButton({
             <Button
                 disabled={isDisabled ? true : false}
                 onPress={onClick}
+                aria-label={ariaLabel}
                 width={size ? size : "36px"}
                 height={size ? size : "36px"}
                 padding={0}

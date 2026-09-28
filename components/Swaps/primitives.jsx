@@ -1,7 +1,9 @@
 "use client";
 import { useState } from "react";
+import Cookies from "js-cookie";
 import { Button, Input, Paragraph, XStack, YStack } from "tamagui";
 
+import { getAccessToken, isAuthExpired } from "../../utils/auth";
 import { GEIST, GEIST_MONO } from "../../utils/fonts";
 
 // Brand-styled building blocks shared by the three swap phases, plus the asset
@@ -75,16 +77,204 @@ export const ASSETS = {
         decimals: 6,
         family: "evm",
     },
+    // Lightning payouts go to a lightning address (user@domain), never to a
+    // pasted invoice. Amounts are sats like the other bitcoin legs. There is no
+    // explorer: a payment hash is not a public transaction.
+    BTC_LIGHTNING: {
+        code: "BTC_LIGHTNING",
+        symbol: "BTC",
+        ticker: "BTC Lightning",
+        network: "Lightning",
+        decimals: 8,
+        family: "lightning",
+        denomination: "btc",
+    },
+    // Pesos paid by bank transfer (P2P). Base unit is the centavo. Only for
+    // logged-in users. No explorer: the deposit reference is a bank movement id.
+    ARS: {
+        code: "ARS",
+        symbol: "ARS",
+        ticker: "ARS",
+        network: "P2P",
+        decimals: 2,
+        family: "fiat",
+    },
 };
 
 export const ASSET_CODES = Object.keys(ASSETS);
 
-export const ASSET_OPTIONS = ASSET_CODES.map((code) => ({
+const optionOf = (code) => ({
     value: code,
     label: `${ASSETS[code].symbol} · ${ASSETS[code].network}`,
-}));
+});
 
 export const assetOf = (code) => ASSETS[code] || null;
+
+// ---------------------------------------------------------- pair matrix ---
+
+// Crypto legs of the classic crypto<->crypto swap.
+const CRYPTO_SWAP_CODES = ["BTC", "LBTC", "USDT_LIQUID", "USDT_ETHEREUM", "USDT_POLYGON"];
+// "You send" never offers the EVM USDT legs.
+const SEND_CODES = ["BTC", "LBTC", "USDT_LIQUID", "BTC_LIGHTNING", "ARS"];
+// ARS in -> crypto out, through POST /swaps/ars.
+const ARS_BUY_TARGETS = ["BTC_LIGHTNING", "BTC", "USDT_LIQUID", "USDT_ETHEREUM", "USDT_POLYGON"];
+// Crypto in -> ARS out, through the existing direct-fiat tentatives.
+const ARS_SELL_SOURCES = ["BTC_LIGHTNING", "LBTC", "USDT_LIQUID"];
+// Legs that exist only behind a session: ARS, and BTC_LIGHTNING as an input
+// (its only pair, BTC_LIGHTNING -> ARS, needs a session).
+const AUTH_ONLY_SEND = ["ARS", "BTC_LIGHTNING"];
+
+// Which flow a pair runs through: "arsBuy" (swap with an ARS leg),
+// "arsSell" (direct-fiat payment) or "swap" (crypto <-> crypto).
+export function flowOf(from, to) {
+    if (from === "ARS") {
+        return "arsBuy";
+    }
+    if (to === "ARS") {
+        return "arsSell";
+    }
+    return "swap";
+}
+
+// The "you get" choices for a given "you send" leg.
+function receiveCodesFor(from, loggedIn) {
+    if (from === "ARS") {
+        return ARS_BUY_TARGETS;
+    }
+    const codes = from === "BTC_LIGHTNING" ? [] : CRYPTO_SWAP_CODES.filter((code) => code !== from);
+    if (loggedIn && ARS_SELL_SOURCES.includes(from)) {
+        codes.push("ARS");
+    }
+    return codes;
+}
+
+export function isSupportedPair(from, to, loggedIn) {
+    if (!SEND_CODES.includes(from)) {
+        return false;
+    }
+    if (!loggedIn && AUTH_ONLY_SEND.includes(from)) {
+        return false;
+    }
+    return receiveCodesFor(from, loggedIn).includes(to);
+}
+
+export function sendOptions(loggedIn) {
+    return SEND_CODES.filter((code) => loggedIn || !AUTH_ONLY_SEND.includes(code)).map(optionOf);
+}
+
+export function receiveOptions(from, loggedIn) {
+    return receiveCodesFor(from, loggedIn).map(optionOf);
+}
+
+// Turns any (from, to) into a supported pair, keeping `from` when possible.
+// Used after a selector change or a direction switch.
+export function normalizePair(from, to, loggedIn) {
+    if (isSupportedPair(from, to, loggedIn)) {
+        return { from, to };
+    }
+    const sendCodes = sendOptions(loggedIn).map((option) => option.value);
+    const nextFrom = sendCodes.includes(from) ? from : sendCodes[0];
+    const targets = receiveCodesFor(nextFrom, loggedIn);
+    return { from: nextFrom, to: targets.includes(to) ? to : targets[0] };
+}
+
+// ------------------------------------------------------------ login gate ---
+
+// Same test as the layout session gate. Call it after mount only: cookies do
+// not exist during SSR, and reading them in render breaks hydration.
+export function readLoggedIn() {
+    try {
+        return Cookies.get("isLoggedIn") === "true" && !isAuthExpired();
+    } catch {
+        return false;
+    }
+}
+
+// /swaps is a public route, so the layout never restores the session here: a
+// user whose access token expired would read as logged out. When a session
+// cookie is still around, try one refresh (getAccessToken) before deciding.
+// Anonymous visitors have neither cookie and trigger no request.
+export async function resolveLoggedIn() {
+    if (readLoggedIn()) {
+        return true;
+    }
+    if (Cookies.get("isLoggedIn") !== "true" && !Cookies.get("access_token")) {
+        return false;
+    }
+    try {
+        return Boolean(await getAccessToken());
+    } catch {
+        return false;
+    }
+}
+
+// ------------------------------------------------------------------ ARS ---
+
+// Centavos -> "15.000,30" (es) / "15,000.30" (en). Always two decimals: the
+// user has to transfer the exact cents or the payment is not detected, so
+// "15000.3" is not acceptable. Integer math, no float division.
+export function formatArsCents(cents, lang = "es") {
+    const numeric = Number(cents);
+    if (cents === null || cents === undefined || !Number.isFinite(numeric)) {
+        return "—";
+    }
+    const total = Math.trunc(Math.abs(numeric));
+    const sign = numeric < 0 ? "-" : "";
+    const whole = Math.floor(total / 100);
+    const fraction = String(total % 100).padStart(2, "0");
+    const locale = lang === "en" ? "en-US" : "es-AR";
+    const decimalMark = lang === "en" ? "." : ",";
+    return `${sign}${new Intl.NumberFormat(locale).format(whole)}${decimalMark}${fraction}`;
+}
+
+// The same amount as a plain string to paste into a banking app: "15000.30".
+export function arsCentsToPlain(cents) {
+    const total = Math.trunc(Math.abs(Number(cents)));
+    return `${Math.floor(total / 100)}.${String(total % 100).padStart(2, "0")}`;
+}
+
+// ---------------------------------------------------- direct-fiat rails ---
+
+// The direct-fiat API names its funding rails with funding_currency (+ network).
+const FUNDING_RAILS = {
+    BTC_LIGHTNING: { funding_currency: "SAT" },
+    LBTC: { funding_currency: "LBTC" },
+    USDT_LIQUID: { funding_currency: "USDT", network: "LIQUID" },
+};
+
+export const fundingRailOf = (code) => FUNDING_RAILS[code] || null;
+
+// Reverse mapping for a tentative read back from the API.
+export function assetOfFunding(fundingCurrency, fundingNetwork) {
+    if (fundingCurrency === "SAT") {
+        return "BTC_LIGHTNING";
+    }
+    if (fundingCurrency === "LBTC") {
+        return "LBTC";
+    }
+    if (fundingCurrency === "USDT" && fundingNetwork === "LIQUID") {
+        return "USDT_LIQUID";
+    }
+    return null;
+}
+
+// What the user must deposit for a direct-fiat quote or tentative, in the
+// asset's base units. Sats rails carry `total_amount_sats`; USDT carries
+// `total_amount_usdt` in dollars (a JSON number), converted here to 8 decimals.
+export function directFiatDepositBaseUnits(payload, assetCode) {
+    if (!payload) {
+        return null;
+    }
+    if (assetCode === "BTC_LIGHTNING" || assetCode === "LBTC") {
+        const sats = Number(payload.total_amount_sats);
+        return Number.isFinite(sats) ? sats : null;
+    }
+    const asset = assetOf(assetCode);
+    if (!asset || payload.total_amount_usdt === null || payload.total_amount_usdt === undefined) {
+        return null;
+    }
+    return toBaseUnits(String(payload.total_amount_usdt), asset.decimals);
+}
 
 // ------------------------------------------------------------ btc units ---
 
@@ -139,6 +329,9 @@ const ADDRESS_PATTERNS = {
     evm: /^0x[0-9a-fA-F]{40}$/,
     bitcoin: /^(bc1|tb1|bcrt1)[a-z0-9]{20,80}$/,
     liquid: /^(lq1|el1|ert1|VJL|VT|AZ)/,
+    // Lightning address (LUD-16). The backend resolves it; a BOLT11 invoice is
+    // rejected because the payout amount is fixed later by the backend.
+    lightning: /^[a-z0-9._+-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/i,
 };
 
 export function isValidAddressFor(assetCode, address) {
@@ -185,10 +378,15 @@ export function fromBaseUnits(amount, decimals) {
 // the user picked sats). `network: true` appends the chain — both bitcoin legs
 // read "BTC", so anywhere the selector is not on screen has to say which one.
 export function formatAssetAmount(amount, assetCode, options = {}) {
-    const { btcUnit = DEFAULT_BTC_UNIT, network = false } = options;
+    const { btcUnit = DEFAULT_BTC_UNIT, network = false, lang } = options;
     const asset = assetOf(assetCode);
     if (!asset) {
         return "—";
+    }
+    // Pesos always read with two decimals and grouped ("15.000,30 ARS").
+    if (asset.family === "fiat") {
+        const text = formatArsCents(amount, lang);
+        return text === "—" ? text : `${text} ${asset.symbol}`;
     }
     const human = fromBaseUnits(amount, displayDecimals(assetCode, btcUnit));
     if (human === null) {
