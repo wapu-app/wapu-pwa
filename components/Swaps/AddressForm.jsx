@@ -18,8 +18,8 @@ import {
 } from "./primitives";
 
 // Phase 2: collect the payout address (on the `to` network) and the refund
-// address (on the `from` network). An ARS purchase (`flow="arsBuy"`) has no
-// refund address: pesos are never refunded on-chain, an operator handles it. Validation runs on submit and then live on
+// address (on the `from` network); an ARS purchase (`flow="arsBuy"`) has no
+// refund address. Validation runs on submit and then live on
 // every keystroke of a field the user already got wrong, so the error clears as
 // soon as the address becomes plausible.
 export default function AddressForm({
@@ -161,8 +161,7 @@ export default function AddressForm({
                         })}
                     />
                     <BreakdownRow label={t.quote.fee} value={formatBps(quote.fee_bps)} />
-                    {/* The order adds the fee delta and identifying cents: the
-                        exact amount to transfer only exists once it is created. */}
+                    {/* The exact amount to transfer only exists once the order is created. */}
                     {isArsBuy ? (
                         <Paragraph color={"$neutral11"} style={sans(12)}>
                             {t.arsBuyAddress.finalAmountHint}

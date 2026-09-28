@@ -27,8 +27,7 @@ function Movement({ movement }) {
             return "$semanticRed";
         }
         if (status === "completed") {
-            // Ledger-neutral (is_positive null): neither credit green nor
-            // the debit color.
+            // Ledger-neutral (is_positive null): neither credit nor debit color.
             if (isNeutralTransaction(transaction)) {
                 return "$neutral11";
             }

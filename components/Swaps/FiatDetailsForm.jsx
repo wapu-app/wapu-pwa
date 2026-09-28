@@ -16,9 +16,8 @@ import {
 } from "./primitives";
 
 // Phase 2 of a crypto -> ARS order: the bank account that receives the pesos.
-// The backend validates the alias/CBU/CVU itself (and, with its flag on,
-// against Fiwind), so the client only checks that it is not empty. The
-// transfer type is always fast_fiat_transfer: there is no selector.
+// The backend validates the alias/CBU/CVU (optionally against Fiwind), so the
+// client only checks that it is not empty.
 export default function FiatDetailsForm({
     t,
     lang,

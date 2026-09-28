@@ -17,10 +17,8 @@ import {
     shortenHash,
 } from "./primitives";
 
-// "Under review", not a plain failure: the user already paid and an operator
-// reviews it (the backend never refunds ARS on its own). The backend says so
-// with `error_code: "under_review"`; FAILED with a detected deposit is kept as
-// a fallback rule for the same case.
+// "Under review", not a failure: the user already paid and an operator reviews it.
+// Signalled by `error_code: "under_review"`, or FAILED with a detected deposit.
 export const isUnderReview = (swap) =>
     Boolean(swap) &&
     (swap.error_code === "under_review" ||
@@ -142,8 +140,7 @@ export default function PurchaseStatus({ t, lang, swap, btcUnit, errorText, onNe
                 ) : null}
             </YStack>
 
-            {/* error_note is never shown for ARS (the backend sends it null;
-                `error_code` drives the notice above). */}
+            {/* No error_note for ARS: `error_code` drives the notice above. */}
             {errorText ? <ErrorText>{errorText}</ErrorText> : null}
 
             <GhostButton onPress={onNewSwap}>{t.arsPayment.newOrder}</GhostButton>

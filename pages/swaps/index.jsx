@@ -59,11 +59,9 @@ const LANG_LABELS = { es: "ES", en: "EN" };
 // Crypto -> ARS always pays out as a fast transfer; the user does not pick.
 const DIRECT_FIAT_TYPE = "fast_fiat_transfer";
 
-// An expired ARS purchase can still execute: the backend matches a bank
-// movement dated before `expires_at` even after the order shows EXPIRED. The
-// backend sends the end of that window as `late_watch_until`. Without it, fall
-// back to the plan's default `ars_swap_late_watch_minutes` (60) after
-// `expires_at`.
+// An EXPIRED ARS purchase can still execute until `late_watch_until`; without it,
+// fall back to the plan's `ars_swap_late_watch_minutes` (60) after `expires_at`.
+// See docs/swaps-page.md.
 const ARS_LATE_WATCH_MS = 60 * 60 * 1000;
 
 function lateWatchEnd(swap) {
@@ -159,8 +157,7 @@ export default function SwapsPage() {
     const [amountOut, setAmountOut] = useState("");
     const [side, setSide] = useState("in");
     const [btcUnit, setBtcUnit] = useState(DEFAULT_BTC_UNIT);
-    // The ARS legs and the close button exist only with a session. Read after
-    // mount, like the stored preferences: cookies do not exist during SSR.
+    // Session-only UI (ARS legs, close button); read after mount, no cookies in SSR.
     const [loggedIn, setLoggedIn] = useState(false);
 
     // Read after mount: localStorage does not exist during SSR.
@@ -195,9 +192,8 @@ export default function SwapsPage() {
     const [swap, setSwap] = useState(null);
     const [swapLoading, setSwapLoading] = useState(false);
     const [swapError, setSwapError] = useState(null);
-    // A 401/404 from the status endpoint will not fix itself: polling stops
-    // until the user acts (new order, retry). Without this, an anonymous
-    // visitor on /swaps?tentative=<id> fires GET /users/refresh every tick.
+    // A 401/404 will not fix itself: stop polling until the user acts, or an
+    // anonymous visitor on ?tentative=<id> fires GET /users/refresh every tick.
     const [swapPollStopped, setSwapPollStopped] = useState(false);
 
     // Crypto -> ARS: bank account details and the direct-fiat tentative.
@@ -282,8 +278,7 @@ export default function SwapsPage() {
             try {
                 const isArsSell = flowOf(from, to) === "arsSell";
                 const rail = fundingRailOf(from);
-                // Crypto -> ARS is priced by the direct-fiat quote, from the
-                // ARS amount only (pesos, not centavos).
+                // Direct-fiat quote: priced from the ARS amount only, in pesos.
                 const { data, status } = isArsSell
                     ? await getDirectFiatQuote({
                           amountArs: arsCentsToPlain(pinnedAmount),
@@ -497,9 +492,7 @@ export default function SwapsPage() {
         }
     };
 
-    // Every pair change goes through normalizePair, so the form can never sit
-    // on a pair the lists do not offer. Crypto -> ARS can only be priced from
-    // the ARS side, so entering that flow pins "you get".
+    // Crypto -> ARS can only be priced from the ARS side: entering it pins "you get".
     const applyPair = (nextFrom, nextTo, nextSide) => {
         const pair = normalizePair(nextFrom, nextTo, loggedIn);
         setFrom(pair.from);
@@ -566,8 +559,7 @@ export default function SwapsPage() {
         return { key: fallbackKey };
     };
 
-    // Issues the deposit instructions of a tentative. Idempotent on the
-    // backend, so the status screen can retry it.
+    // Idempotent on the backend, so the status screen can retry it.
     const issueFunding = async (id) => {
         try {
             const { data, status } = await requestDirectFiatFunding(id);
@@ -592,9 +584,7 @@ export default function SwapsPage() {
         setRetryingFunding(false);
     };
 
-    // Crypto -> ARS: create the tentative, move to its status screen, then ask
-    // for the deposit instructions. A failed /funding leaves the tentative in
-    // CREATED, and the status screen offers the retry.
+    // A failed /funding leaves the tentative in CREATED; the status screen offers the retry.
     const handleCreateTentative = async () => {
         const rail = fundingRailOf(from);
         const body = {
@@ -634,9 +624,8 @@ export default function SwapsPage() {
                 await handleCreateTentative();
                 return;
             }
-            // ARS purchases send the side the user pinned: `amount_ars` in
-            // centavos, or `amount_out` in the target's base units. The final
-            // amount to transfer comes back in the swap.
+            // ARS purchases send the pinned side: `amount_ars` (centavos) or
+            // `amount_out` (base units); the amount to transfer comes back in the swap.
             const { data, status } =
                 flow === "arsBuy"
                     ? await createArsSwap({

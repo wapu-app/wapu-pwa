@@ -4,11 +4,8 @@ import { Paragraph, XStack, YStack } from "tamagui";
 import CopyButton from "../CopyButton";
 import { Overline, WarningBanner, arsCentsToPlain, formatArsCents, mono } from "./primitives";
 
-// What an ARS purchase shows while it waits for the bank transfer: the Fiwind
-// alias, the exact amount (cents included) and the warning that a different
-// amount is not detected. The amount always comes from the swap
-// (`amount_in_expected`), never from the quote: the backend adds the fee delta
-// and the identifying cents when it creates the order.
+// Bank-transfer instructions of an ARS purchase. The amount comes from the swap
+// (`amount_in_expected`), never from the quote — see docs/swaps-page.md.
 export default function ArsPaymentInstructions({ t, lang, swap, countdown }) {
     const amountText = `${formatArsCents(swap.amount_in_expected, lang)} ARS`;
 

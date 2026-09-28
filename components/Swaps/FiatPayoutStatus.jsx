@@ -83,11 +83,9 @@ function CopyBox({ t, label, value }) {
     );
 }
 
-// Phase 3 of a crypto -> ARS order. The tentative is read from
-// GET /transactions/direct-fiat/tentatives/<id>; polling lives in pages/swaps.
-// A tentative still in CREATED has no deposit instructions yet (the /funding
-// call failed or has not run): `onRetryFunding` issues them again, which is
-// idempotent on the backend.
+// Phase 3 of a crypto -> ARS order; polling lives in pages/swaps. A tentative
+// still in CREATED has no deposit instructions yet: `onRetryFunding` issues them
+// again (idempotent on the backend).
 export default function FiatPayoutStatus({
     t,
     lang,

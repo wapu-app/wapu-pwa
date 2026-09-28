@@ -571,12 +571,9 @@ export async function getMySwaps() {
     });
 }
 
-// ARS -> crypto purchase: a swap whose input leg is ARS, paid by bank
-// transfer. Session required (the monthly ARS limit is per user).
-// Body: { to_asset, payout_address, amount_ars | amount_out }.
-// `amount_ars` is integer centavos, like every swap amount on the wire;
-// `amount_out` is the base unit of `to_asset`. The response is the swap,
-// including the final `amount_in_expected` the user has to transfer.
+// ARS -> crypto purchase; session required (the monthly ARS limit is per user).
+// Body: { to_asset, payout_address, amount_ars (centavos) | amount_out (base unit
+// of `to_asset`) }. The returned swap carries the final `amount_in_expected`.
 export async function createArsSwap(body) {
     return await apiRequest({
         endpoint: "/swaps/ars",
@@ -585,9 +582,8 @@ export async function createArsSwap(body) {
     });
 }
 
-// Crypto -> ARS through the direct-fiat tentatives. All four calls need a
-// session. Unlike swaps, `amount_ars` here is in pesos (a JSON number) and
-// `total_amount_usdt` in dollars — see
+// Crypto -> ARS through direct-fiat tentatives (session required). Unlike swaps,
+// `amount_ars` is in pesos and `total_amount_usdt` in dollars — see
 // app_backend/docs/2026-04-02-direct-payment-tentative.md in wapu-app/survivors.
 export async function getDirectFiatQuote({ amountArs, fundingCurrency, fundingNetwork, type }) {
     const query = new URLSearchParams({

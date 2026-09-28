@@ -77,9 +77,7 @@ export const ASSETS = {
         decimals: 6,
         family: "evm",
     },
-    // Lightning payouts go to a lightning address (user@domain), never to a
-    // pasted invoice. Amounts are sats like the other bitcoin legs. There is no
-    // explorer: a payment hash is not a public transaction.
+    // Payouts go to a lightning address, never an invoice; no explorer for a payment hash.
     BTC_LIGHTNING: {
         code: "BTC_LIGHTNING",
         symbol: "BTC",
@@ -89,8 +87,7 @@ export const ASSETS = {
         family: "lightning",
         denomination: "btc",
     },
-    // Pesos paid by bank transfer (P2P). Base unit is the centavo. Only for
-    // logged-in users. No explorer: the deposit reference is a bank movement id.
+    // Pesos by bank transfer; no explorer: the deposit reference is a bank movement id.
     ARS: {
         code: "ARS",
         symbol: "ARS",
@@ -167,7 +164,6 @@ export function receiveOptions(from, loggedIn) {
 }
 
 // Turns any (from, to) into a supported pair, keeping `from` when possible.
-// Used after a selector change or a direction switch.
 export function normalizePair(from, to, loggedIn) {
     if (isSupportedPair(from, to, loggedIn)) {
         return { from, to };
@@ -193,7 +189,6 @@ export function readLoggedIn() {
 // /swaps is a public route, so the layout never restores the session here: a
 // user whose access token expired would read as logged out. When a session
 // cookie is still around, try one refresh (getAccessToken) before deciding.
-// Anonymous visitors have neither cookie and trigger no request.
 export async function resolveLoggedIn() {
     if (readLoggedIn()) {
         return true;
@@ -329,8 +324,7 @@ const ADDRESS_PATTERNS = {
     evm: /^0x[0-9a-fA-F]{40}$/,
     bitcoin: /^(bc1|tb1|bcrt1)[a-z0-9]{20,80}$/,
     liquid: /^(lq1|el1|ert1|VJL|VT|AZ)/,
-    // Lightning address (LUD-16). The backend resolves it; a BOLT11 invoice is
-    // rejected because the payout amount is fixed later by the backend.
+    // LUD-16 lightning address: BOLT11 is rejected, the backend fixes the amount later.
     lightning: /^[a-z0-9._+-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/i,
 };
 

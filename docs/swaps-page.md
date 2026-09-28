@@ -120,17 +120,25 @@ or `/home` when there is no history).
 | `arsBuy` | `ARS` -> BTC Lightning, BTC, USDT Liquid/Ethereum/Polygon | `GET /swaps/quote`, `POST /swaps/ars` (`amount_ars` in centavos or `amount_out`), `GET /swaps/<uuid>` |
 | `arsSell` | BTC Lightning, L-BTC, USDT Liquid -> `ARS` | direct-fiat tentatives, always `fast_fiat_transfer` |
 
-- **`arsBuy`** has no refund address. The status screen (`PurchaseStatus`,
+- **`arsBuy`** has no refund address: pesos are never refunded on-chain, an
+  operator handles it. The status screen (`PurchaseStatus`,
   `ArsPaymentInstructions`) shows the Fiwind alias and `amount_in_expected`
   from the order, not from the quote: the backend adds the fee delta and the
   identifying cents. The amount always has two decimals (`formatArsCents`),
-  with a warning that a different amount is not detected. `FAILED` with a
-  `deposit_txid` reads "under review". An `EXPIRED` purchase keeps polling until
+  with a warning that a different amount is not detected. The backend signals
+  "under review" (the user already paid, an operator reviews it) with
+  `error_code: "under_review"`; `FAILED` with a `deposit_txid` reads the same as
+  a fallback. An `EXPIRED` purchase keeps polling until
   `late_watch_until` (sent by the backend; 60 minutes after `expires_at` when
   absent), because a transfer made before `expires_at` still executes.
 - **`arsSell`** prices only from the ARS amount (direct-fiat quote, pesos), so
   "you send" is read-only. Phase 2 asks for the alias/CBU/CVU and an optional
-  holder name; submitting creates the tentative and then calls `/funding`. The
+  holder name; the backend validates the alias/CBU/CVU (optionally against
+  Fiwind), so the client only checks that it is not empty. Submitting creates
+  the tentative and calls `/funding` before the status screen starts polling,
+  so a stale `CREATED` read cannot land after the `201` of `/funding`. Tentative
+  statuses are not swap statuses: `EXECUTED` is not final, the fiat transfer is
+  still going out. The
   order lives at `/swaps?tentative=<id>` (`FiatPayoutStatus`). A tentative
   still in `CREATED` offers to issue the instructions again.
 - A `401` or `404` from `GET /swaps/<uuid>` or the tentative endpoint stops
