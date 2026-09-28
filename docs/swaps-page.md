@@ -105,7 +105,8 @@ directly. "Start a new swap" resets state and pushes `/swaps`.
 gate after mount with `resolveLoggedIn()`: cookie `isLoggedIn` +
 `!isAuthExpired()` (same test as the layout), plus one refresh when a session
 cookie is present but the token expired, because the layout does not restore
-sessions on this public route. Anonymous visitors trigger no request. and filters both selectors through `sendOptions` /
+sessions on this public route. Anonymous visitors trigger no request. The page
+then filters both selectors through `sendOptions` / `receiveOptions`.
 `receiveOptions`. "You send" never offers USDT Ethereum/Polygon. Every pair
 change goes through `normalizePair`, so the form never sits on an unoffered
 pair. With a session, an X at the top right leaves the page (`router.back()`,
