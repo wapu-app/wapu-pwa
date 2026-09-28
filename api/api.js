@@ -570,3 +570,59 @@ export async function getMySwaps() {
         endpoint: "/swaps",
     });
 }
+
+// ARS -> crypto purchase; session required (the monthly ARS limit is per user).
+// Body: { to_asset, payout_address, amount_ars (centavos) | amount_out (base unit
+// of `to_asset`) }. The returned swap carries the final `amount_in_expected`.
+export async function createArsSwap(body) {
+    return await apiRequest({
+        endpoint: "/swaps/ars",
+        method: "POST",
+        body: body,
+    });
+}
+
+// Crypto -> ARS through direct-fiat tentatives (session required). Unlike swaps,
+// `amount_ars` is in pesos and `total_amount_usdt` in dollars — see
+// app_backend/docs/2026-04-02-direct-payment-tentative.md in wapu-app/survivors.
+export async function getDirectFiatQuote({ amountArs, fundingCurrency, fundingNetwork, type }) {
+    const query = new URLSearchParams({
+        amount_ars: String(amountArs),
+        funding_currency: fundingCurrency,
+        type: type,
+    });
+    if (fundingNetwork) {
+        query.set("funding_network", fundingNetwork);
+    }
+    return await apiRequest({
+        endpoint: `/transactions/direct-fiat/quote?${query.toString()}`,
+    });
+}
+
+export async function createDirectFiatTentative(body) {
+    return await apiRequest({
+        endpoint: "/transactions/direct-fiat/tentatives",
+        method: "POST",
+        body: body,
+    });
+}
+
+// Idempotent on the backend: a repeated call returns the instructions already
+// issued, so a retry after a network error is safe.
+export async function requestDirectFiatFunding(tentativeId) {
+    const response = await apiRequest({
+        endpoint: `/transactions/direct-fiat/tentatives/${encodeURIComponent(tentativeId)}/funding`,
+        method: "POST",
+        body: {},
+    });
+    if (isOkStatus(response.status)) {
+        invalidate(CACHE_KEY.TRANSACTIONS);
+    }
+    return response;
+}
+
+export async function getDirectFiatTentative(tentativeId) {
+    return await apiRequest({
+        endpoint: `/transactions/direct-fiat/tentatives/${encodeURIComponent(tentativeId)}`,
+    });
+}

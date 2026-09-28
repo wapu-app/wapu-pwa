@@ -20,6 +20,8 @@ is the first page in the app that ships its own bilingual (ES/EN) dictionary.
 | `USDT_LIQUID`   | USDT   | Liquid   | 8        | liquid         |
 | `USDT_ETHEREUM` | USDT   | Ethereum | 6        | evm            |
 | `USDT_POLYGON`  | USDT   | Polygon  | 6        | evm            |
+| `BTC_LIGHTNING` | BTC    | Lightning| 8 (sats) | lightning (`user@domain`) |
+| `ARS`           | ARS    | P2P      | 2 (centavos) | fiat       |
 
 Amounts travel over the wire as **integer base units**. The UI shows human
 units; `toBaseUnits` / `fromBaseUnits` in `components/Swaps/primitives.jsx` are
@@ -97,6 +99,52 @@ The page is a single card with three phases plus a language pill at the very top
 The swap id lives in the URL, so refreshing or sharing the link restores phase 3
 directly. "Start a new swap" resets state and pushes `/swaps`.
 
+## ARS legs (logged in only)
+
+`ARS` and `BTC_LIGHTNING` as an input need a session. The page resolves the
+gate after mount with `resolveLoggedIn()`: cookie `isLoggedIn` +
+`!isAuthExpired()` (same test as the layout), plus one refresh when a session
+cookie is present but the token expired, because the layout does not restore
+sessions on this public route. Anonymous visitors trigger no request. The page
+then filters both selectors through `sendOptions` / `receiveOptions`.
+`receiveOptions`. "You send" never offers USDT Ethereum/Polygon. Every pair
+change goes through `normalizePair`, so the form never sits on an unoffered
+pair. With a session, an X at the top right leaves the page (`router.back()`,
+or `/home` when there is no history).
+
+`flowOf(from, to)` picks one of three flows:
+
+| Flow | Pairs | Backend |
+|------|-------|---------|
+| `swap` | crypto <-> crypto | `/swaps` as above |
+| `arsBuy` | `ARS` -> BTC Lightning, BTC, USDT Liquid/Ethereum/Polygon | `GET /swaps/quote`, `POST /swaps/ars` (`amount_ars` in centavos or `amount_out`), `GET /swaps/<uuid>` |
+| `arsSell` | BTC Lightning, L-BTC, USDT Liquid -> `ARS` | direct-fiat tentatives, always `fast_fiat_transfer` |
+
+- **`arsBuy`** has no refund address: pesos are never refunded on-chain, an
+  operator handles it. The status screen (`PurchaseStatus`,
+  `ArsPaymentInstructions`) shows the Fiwind alias and `amount_in_expected`
+  from the order, not from the quote: the backend adds the fee delta and the
+  identifying cents. The amount always has two decimals (`formatArsCents`),
+  with a warning that a different amount is not detected. The backend signals
+  "under review" (the user already paid, an operator reviews it) with
+  `error_code: "under_review"`; `FAILED` with a `deposit_txid` reads the same as
+  a fallback. An `EXPIRED` purchase keeps polling until
+  `late_watch_until` (sent by the backend; 60 minutes after `expires_at` when
+  absent), because a transfer made before `expires_at` still executes.
+- **`arsSell`** prices only from the ARS amount (direct-fiat quote, pesos), so
+  "you send" is read-only. Phase 2 asks for the alias/CBU/CVU and an optional
+  holder name; the backend validates the alias/CBU/CVU (optionally against
+  Fiwind), so the client only checks that it is not empty. Submitting creates
+  the tentative and calls `/funding` before the status screen starts polling,
+  so a stale `CREATED` read cannot land after the `201` of `/funding`. Tentative
+  statuses are not swap statuses: `EXECUTED` is not final, the fiat transfer is
+  still going out. The
+  order lives at `/swaps?tentative=<id>` (`FiatPayoutStatus`). A tentative
+  still in `CREATED` offers to issue the instructions again.
+- A `401` or `404` from `GET /swaps/<uuid>` or the tentative endpoint stops
+  polling until the user acts (retry or new order): these do not fix
+  themselves, and the tentative endpoint would refresh the session every tick.
+
 ## Polling
 
 `GET /swaps/<uuid>` is polled every 10 s with `setInterval`. The effect depends
@@ -114,6 +162,11 @@ All calls go through `api/api.js` — no raw `fetch` in the page or components.
 | `createSwap(body)`               | `POST /swaps`                              | optional   |
 | `getSwap(uuid)`                  | `GET /swaps/<uuid>`                        | none       |
 | `getMySwaps()`                   | `GET /swaps`                               | required   |
+| `createArsSwap(body)`            | `POST /swaps/ars`                          | required   |
+| `getDirectFiatQuote(args)`       | `GET /transactions/direct-fiat/quote`      | required   |
+| `createDirectFiatTentative(body)`| `POST /transactions/direct-fiat/tentatives`| required   |
+| `requestDirectFiatFunding(id)`   | `POST /transactions/direct-fiat/tentatives/<id>/funding` | required |
+| `getDirectFiatTentative(id)`     | `GET /transactions/direct-fiat/tentatives/<id>` | required |
 
 `apiRequest` gained a third value for `requiresAuth`: `"optional"`. It tries
 `getAccessToken()` and attaches `Authorization` only when a token comes back;

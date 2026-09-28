@@ -18,11 +18,14 @@ import {
 } from "./primitives";
 
 // Phase 2: collect the payout address (on the `to` network) and the refund
-// address (on the `from` network). Validation runs on submit and then live on
+// address (on the `from` network); an ARS purchase (`flow="arsBuy"`) has no
+// refund address. Validation runs on submit and then live on
 // every keystroke of a field the user already got wrong, so the error clears as
 // soon as the address becomes plausible.
 export default function AddressForm({
     t,
+    lang,
+    flow = "swap",
     from,
     to,
     btcUnit,
@@ -40,19 +43,25 @@ export default function AddressForm({
     const fromAsset = assetOf(from);
     const toAsset = assetOf(to);
 
+    const isArsBuy = flow === "arsBuy";
+    const isLightningPayout = toAsset && toAsset.family === "lightning";
+
     const errorFor = (assetCode, value) => {
         if (!String(value || "").trim()) {
             return t.addresses.required;
         }
         if (!isValidAddressFor(assetCode, value)) {
             const asset = assetOf(assetCode);
+            if (asset && asset.family === "lightning") {
+                return t.arsBuyAddress.invalidLightning;
+            }
             return t.addresses.invalid(asset ? asset.network : assetCode);
         }
         return null;
     };
 
     const payoutError = errorFor(to, payoutAddress);
-    const refundError = errorFor(from, refundAddress);
+    const refundError = isArsBuy ? null : errorFor(from, refundAddress);
     const isValid = !payoutError && !refundError;
 
     const handleSubmit = () => {
@@ -70,7 +79,7 @@ export default function AddressForm({
                     {t.addresses.title}
                 </Paragraph>
                 <Paragraph color={"$neutral11"} style={sans(13)}>
-                    {t.addresses.subtitle}
+                    {isArsBuy ? t.arsBuyAddress.subtitle : t.addresses.subtitle}
                 </Paragraph>
             </YStack>
 
@@ -84,7 +93,11 @@ export default function AddressForm({
                 <TextField
                     value={payoutAddress}
                     onChange={onPayoutChange}
-                    placeholder={t.addresses.payoutPlaceholder}
+                    placeholder={
+                        isLightningPayout
+                            ? t.arsBuyAddress.lightningPlaceholder
+                            : t.addresses.payoutPlaceholder
+                    }
                     ariaLabel={t.addresses.payoutLabel(
                         toAsset ? toAsset.symbol : to,
                         toAsset ? toAsset.network : ""
@@ -94,6 +107,7 @@ export default function AddressForm({
                 {touched && payoutError ? <ErrorText>{payoutError}</ErrorText> : null}
             </YStack>
 
+            {isArsBuy ? null : (
             <YStack gap={"$2"}>
                 <Overline>
                     {t.addresses.refundLabel(
@@ -119,6 +133,7 @@ export default function AddressForm({
                     </Paragraph>
                 )}
             </YStack>
+            )}
 
             {quote ? (
                 <YStack
@@ -132,10 +147,11 @@ export default function AddressForm({
                     <Overline>{t.addresses.summary}</Overline>
                     <BreakdownRow
                         label={t.quote.youSend}
-                        value={formatAssetAmount(quote.amount_in, from, {
+                        value={`${isArsBuy ? "≈ " : ""}${formatAssetAmount(quote.amount_in, from, {
                             btcUnit,
+                            lang,
                             network: true,
-                        })}
+                        })}`}
                     />
                     <BreakdownRow
                         label={t.quote.youGet}
@@ -145,6 +161,12 @@ export default function AddressForm({
                         })}
                     />
                     <BreakdownRow label={t.quote.fee} value={formatBps(quote.fee_bps)} />
+                    {/* The exact amount to transfer only exists once the order is created. */}
+                    {isArsBuy ? (
+                        <Paragraph color={"$neutral11"} style={sans(12)}>
+                            {t.arsBuyAddress.finalAmountHint}
+                        </Paragraph>
+                    ) : null}
                 </YStack>
             ) : null}
 
@@ -152,7 +174,13 @@ export default function AddressForm({
 
             <YStack gap={"$2.5"}>
                 <PrimaryButton onPress={handleSubmit} disabled={submitting}>
-                    {submitting ? t.addresses.submitting : t.addresses.submit}
+                    {isArsBuy
+                        ? submitting
+                            ? t.arsBuyAddress.submitting
+                            : t.arsBuyAddress.submit
+                        : submitting
+                          ? t.addresses.submitting
+                          : t.addresses.submit}
                 </PrimaryButton>
                 <GhostButton onPress={onBack}>{t.addresses.back}</GhostButton>
             </YStack>

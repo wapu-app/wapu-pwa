@@ -1,8 +1,17 @@
 import { describe, expect, it } from "vitest";
 
 import {
-    ASSET_OPTIONS,
+    arsCentsToPlain,
+    assetOfFunding,
     convertUnitText,
+    directFiatDepositBaseUnits,
+    flowOf,
+    formatArsCents,
+    fundingRailOf,
+    isSupportedPair,
+    normalizePair,
+    receiveOptions,
+    sendOptions,
     displayDecimals,
     displaySymbol,
     effectiveRate,
@@ -204,14 +213,11 @@ describe("swaps primitives — address validation", () => {
         expect(isValidAddressFor("UNKNOWN", "whatever")).toBe(false);
     });
 
-    it("exposes one select option per supported leg", () => {
-        expect(ASSET_OPTIONS.map((option) => option.value)).toEqual([
-            "BTC",
-            "LBTC",
-            "USDT_LIQUID",
-            "USDT_ETHEREUM",
-            "USDT_POLYGON",
-        ]);
+    it("accepts lightning addresses for the Lightning leg, never invoices", () => {
+        expect(isValidAddressFor("BTC_LIGHTNING", "satoshi@walletofsatoshi.com")).toBe(true);
+        expect(isValidAddressFor("BTC_LIGHTNING", "lnbc10u1p3xyz")).toBe(false);
+        expect(isValidAddressFor("BTC_LIGHTNING", "user@nodot")).toBe(false);
+        expect(isValidAddressFor("ARS", "some.alias")).toBe(false);
     });
 });
 
@@ -263,5 +269,98 @@ describe("swaps primitives — explorer links", () => {
         expect(explorerTxUrl("BTC", "abc/../evil?x=1")).toBe(
             "https://blockstream.info/tx/abc%2F..%2Fevil%3Fx%3D1"
         );
+    });
+});
+
+describe("swaps primitives — pair matrix and login gate", () => {
+    const values = (options) => options.map((option) => option.value);
+
+    it("never offers EVM USDT as input, and hides the ARS legs when logged out", () => {
+        expect(values(sendOptions(false))).toEqual(["BTC", "LBTC", "USDT_LIQUID"]);
+        expect(values(sendOptions(true))).toEqual([
+            "BTC",
+            "LBTC",
+            "USDT_LIQUID",
+            "BTC_LIGHTNING",
+            "ARS",
+        ]);
+    });
+
+    it("offers BTC Lightning as output only with ARS as input", () => {
+        expect(values(receiveOptions("ARS", true))).toEqual([
+            "BTC_LIGHTNING",
+            "BTC",
+            "USDT_LIQUID",
+            "USDT_ETHEREUM",
+            "USDT_POLYGON",
+        ]);
+        expect(values(receiveOptions("LBTC", true))).not.toContain("BTC_LIGHTNING");
+        expect(values(receiveOptions("BTC", true))).not.toContain("BTC_LIGHTNING");
+    });
+
+    it("offers ARS as output only for the direct-fiat rails and only logged in", () => {
+        expect(values(receiveOptions("BTC_LIGHTNING", true))).toEqual(["ARS"]);
+        expect(values(receiveOptions("LBTC", true))).toContain("ARS");
+        expect(values(receiveOptions("USDT_LIQUID", true))).toContain("ARS");
+        expect(values(receiveOptions("BTC", true))).not.toContain("ARS");
+        expect(values(receiveOptions("LBTC", false))).not.toContain("ARS");
+    });
+
+    it("classifies each pair into its flow", () => {
+        expect(flowOf("ARS", "BTC_LIGHTNING")).toBe("arsBuy");
+        expect(flowOf("LBTC", "ARS")).toBe("arsSell");
+        expect(flowOf("LBTC", "BTC")).toBe("swap");
+    });
+
+    it("normalizes unsupported pairs to an offered one", () => {
+        expect(isSupportedPair("ARS", "BTC", false)).toBe(false);
+        expect(normalizePair("ARS", "BTC", false)).toEqual({ from: "BTC", to: "LBTC" });
+        // Reversing ARS -> USDT Ethereum is not offered: keep USDT_ETHEREUM
+        // out of "you send".
+        expect(normalizePair("USDT_ETHEREUM", "ARS", true)).toEqual({ from: "BTC", to: "LBTC" });
+        expect(normalizePair("BTC_LIGHTNING", "ARS", true)).toEqual({
+            from: "BTC_LIGHTNING",
+            to: "ARS",
+        });
+        expect(normalizePair("LBTC", "BTC", false)).toEqual({ from: "LBTC", to: "BTC" });
+    });
+});
+
+describe("swaps primitives — ARS amounts and direct-fiat rails", () => {
+    it("always shows two decimals for pesos, grouped per language", () => {
+        expect(formatArsCents(1500030, "es")).toBe("15.000,30");
+        expect(formatArsCents(1500030, "en")).toBe("15,000.30");
+        expect(formatArsCents(1234, "es")).toBe("12,34");
+        expect(formatArsCents(null)).toBe("—");
+        expect(formatAssetAmount(1500000, "ARS", { lang: "es" })).toBe("15.000,00 ARS");
+    });
+
+    it("writes centavos as a plain amount for banking apps", () => {
+        expect(arsCentsToPlain(1500030)).toBe("15000.30");
+        expect(arsCentsToPlain(5)).toBe("0.05");
+    });
+
+    it("maps the direct-fiat funding rails both ways", () => {
+        expect(fundingRailOf("BTC_LIGHTNING")).toEqual({ funding_currency: "SAT" });
+        expect(fundingRailOf("LBTC")).toEqual({ funding_currency: "LBTC" });
+        expect(fundingRailOf("USDT_LIQUID")).toEqual({
+            funding_currency: "USDT",
+            network: "LIQUID",
+        });
+        expect(fundingRailOf("BTC")).toBeNull();
+        expect(assetOfFunding("SAT", "LIGHTNING")).toBe("BTC_LIGHTNING");
+        expect(assetOfFunding("LBTC", "LIQUID")).toBe("LBTC");
+        expect(assetOfFunding("USDT", "LIQUID")).toBe("USDT_LIQUID");
+        expect(assetOfFunding("USDT", "POLYGON")).toBeNull();
+    });
+
+    it("reads the deposit in base units: sats as-is, USDT dollars to 8 decimals", () => {
+        expect(directFiatDepositBaseUnits({ total_amount_sats: 21821 }, "BTC_LIGHTNING")).toBe(
+            21821
+        );
+        expect(directFiatDepositBaseUnits({ total_amount_usdt: 22.75 }, "USDT_LIQUID")).toBe(
+            2275000000
+        );
+        expect(directFiatDepositBaseUnits(null, "LBTC")).toBeNull();
     });
 });

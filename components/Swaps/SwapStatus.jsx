@@ -39,7 +39,7 @@ const pad = (value) => String(value).padStart(2, "0");
 
 // Live countdown to `expires_at`. Its own 1s interval, cleaned up on unmount and
 // stopped once the swap leaves the waiting state.
-function useCountdown(expiresAt, active) {
+export function useCountdown(expiresAt, active) {
     const [now, setNow] = useState(() => Date.now());
 
     useEffect(() => {
@@ -65,14 +65,24 @@ function useCountdown(expiresAt, active) {
     };
 }
 
-function Stepper({ t, status, confirmations, requiredConfirmations }) {
+// `steps` overrides the four labels (the ARS purchase names them differently);
+// `showConfirmations: false` hides the x/N line for legs with no confirmations.
+export function Stepper({
+    t,
+    status,
+    confirmations,
+    requiredConfirmations,
+    steps,
+    showConfirmations = true,
+}) {
     const current = STEP_INDEX[status] === undefined ? 0 : STEP_INDEX[status];
     const failed = FAILURE_STATUSES.includes(status);
+    const stepLabels = steps || t.status.steps;
     const labels = [
-        t.status.steps.waiting,
-        t.status.steps.confirming,
-        t.status.steps.sending,
-        t.status.steps.done,
+        stepLabels.waiting,
+        stepLabels.confirming,
+        stepLabels.sending,
+        stepLabels.done,
     ];
 
     return (
@@ -105,7 +115,7 @@ function Stepper({ t, status, confirmations, requiredConfirmations }) {
                     </Paragraph>
                 ))}
             </XStack>
-            {status === "CONFIRMING" ? (
+            {showConfirmations && status === "CONFIRMING" ? (
                 <Paragraph color={"$neutral11"} style={mono(12)}>
                     {t.status.confirmationsProgress(
                         confirmations || 0,
@@ -124,7 +134,7 @@ function Stepper({ t, status, confirmations, requiredConfirmations }) {
 // into a support message are different needs, so neither replaces the other.
 // `assetCode` is the leg the hash belongs to, which the caller knows and the
 // hash does not carry.
-function TxidRow({ t, label, txid, assetCode }) {
+export function TxidRow({ t, label, txid, assetCode }) {
     const href = explorerTxUrl(assetCode, txid);
     const short = shortenHash(txid);
 
