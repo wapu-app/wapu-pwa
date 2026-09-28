@@ -11,6 +11,7 @@ import DepositIcon from "../../public/deposit_icon.svg";
 import FastSendIcon from "../../public/fast_send_icon.svg";
 import SendIcon from "../../public/send_icon.svg";
 import WapuSendIcon from "../../public/wapu_send_icon.svg";
+import { amountSign, isNeutralTransaction } from "../../utils/transactionSign";
 
 function Movement({ movement }) {
     const router = useRouter();
@@ -26,6 +27,11 @@ function Movement({ movement }) {
             return "$semanticRed";
         }
         if (status === "completed") {
+            // Ledger-neutral (is_positive null): neither credit green nor
+            // the debit color.
+            if (isNeutralTransaction(transaction)) {
+                return "$neutral11";
+            }
             if (is_positive) {
                 return "$semanticGreen";
             } else {
@@ -75,7 +81,8 @@ function Movement({ movement }) {
             transaction.type === "receive_inner_transf" ||
             transaction.type === "fiat_transfer" ||
             transaction.type === "qr_payment" ||
-            transaction.type === "fast_fiat_transfer"
+            transaction.type === "fast_fiat_transfer" ||
+            transaction.type === "deposit_ars"
         ) {
             amount = transaction.payment_amount;
         }
@@ -128,7 +135,7 @@ function Movement({ movement }) {
                     flexShrink={1}
                     weight={"$1"}
                 >
-                    {movement.is_positive ? "+" : "-"}
+                    {amountSign(movement)}
                     {typeAmount(movement)} {movement.payment_currency}
                 </Paragraph>
 

@@ -1,3 +1,4 @@
+import { amountSign } from "../../utils/transactionSign";
 import {
     CustomContainer,
     CustomInfoMovement,
@@ -27,7 +28,8 @@ export default function index(props) {
             transaction.type === "receive_inner_transf" ||
             transaction.type === "fiat_transfer" ||
             transaction.type === "qr_payment" ||
-            transaction.type === "fast_fiat_transfer"
+            transaction.type === "fast_fiat_transfer" ||
+            transaction.type === "deposit_ars"
         ) {
             amount = transaction.payment_amount;
         }
@@ -55,7 +57,7 @@ export default function index(props) {
                         </CustomInfoMovement>
                         <CustomAmountMovement className="amountMovement">
                             <CustomPText>
-                                {transaction.is_positive ? "+" : "-"}
+                                {amountSign(transaction)}
                                 {typeAmount(transaction)}{" "}
                                 {transaction.payment_currency}
                             </CustomPText>
