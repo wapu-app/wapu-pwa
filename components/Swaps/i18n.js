@@ -109,6 +109,8 @@ export const TRANSLATIONS = {
         errors: {
             samePair: "Elegí dos activos distintos.",
             quoteFailed: "No pudimos calcular la cotización.",
+            belowMinimum: (minimum) => `El monto mínimo es ${minimum}.`,
+            invalidAmount: "El monto no es válido.",
             createFailed: "No pudimos crear el swap.",
             network: "Error de red. Intentá de nuevo.",
             rateLimited: "Demasiados intentos. Esperá un momento e intentá de nuevo.",
@@ -314,6 +316,8 @@ export const TRANSLATIONS = {
         errors: {
             samePair: "Pick two different assets.",
             quoteFailed: "We could not get a quote.",
+            belowMinimum: (minimum) => `The minimum amount is ${minimum}.`,
+            invalidAmount: "The amount is not valid.",
             createFailed: "We could not create the swap.",
             network: "Network error. Please try again.",
             rateLimited: "Too many attempts. Wait a moment and try again.",

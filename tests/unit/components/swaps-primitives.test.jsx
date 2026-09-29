@@ -18,10 +18,12 @@ import {
     explorerTxUrl,
     formatAssetAmount,
     formatBps,
+    formatMinimumAmount,
     formatRate,
     fromBaseUnits,
     hasUnitToggle,
     isValidAddressFor,
+    parseBelowMinimum,
     shortenHash,
     toBaseUnits,
 } from "../../../components/Swaps/primitives";
@@ -362,5 +364,32 @@ describe("swaps primitives — ARS amounts and direct-fiat rails", () => {
             2275000000
         );
         expect(directFiatDepositBaseUnits(null, "LBTC")).toBeNull();
+    });
+});
+
+describe("swaps primitives — parseBelowMinimum", () => {
+    it("reads the backend minimum as an amount and an asset", () => {
+        expect(parseBelowMinimum("amount below minimum (1000000 base units of ARS)")).toEqual({
+            amount: 1000000,
+            assetCode: "ARS",
+        });
+        expect(parseBelowMinimum("amount below minimum (500000000 base units of USDT_LIQUID)")).toEqual({
+            amount: 500000000,
+            assetCode: "USDT_LIQUID",
+        });
+    });
+
+    it("renders the minimum in sats for bitcoin and in units otherwise", () => {
+        expect(formatMinimumAmount(1000, "BTC", "es")).toBe("1000 sats");
+        expect(formatMinimumAmount(10000, "LBTC", "es")).toBe("10000 sats");
+        expect(formatMinimumAmount(1000000, "ARS", "es")).toBe("10.000,00 ARS");
+        expect(formatMinimumAmount(500000000, "USDT_LIQUID", "es")).toBe("5.00 USDT");
+        expect(formatMinimumAmount(20000000, "USDT_ETHEREUM", "es")).toBe("20.00 USDT");
+    });
+
+    it("returns null for other messages and unknown assets", () => {
+        expect(parseBelowMinimum("amount too small for this pair")).toBeNull();
+        expect(parseBelowMinimum("amount below minimum (10 base units of DOGE)")).toBeNull();
+        expect(parseBelowMinimum(undefined)).toBeNull();
     });
 });

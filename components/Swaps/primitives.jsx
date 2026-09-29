@@ -390,6 +390,33 @@ export function formatAssetAmount(amount, assetCode, options = {}) {
     return `${human} ${displaySymbol(assetCode, btcUnit)}${suffix}`;
 }
 
+// The backend words its minimum in base units ("amount below minimum
+// (1000000 base units of ARS)"). Parsed here so the UI shows it in the
+// asset's own units ("10.000,00 ARS") instead.
+const BELOW_MINIMUM_PATTERN = /^amount below minimum \((\d+) base units of ([A-Z_]+)\)$/;
+
+export function parseBelowMinimum(message) {
+    const match = typeof message === "string" ? BELOW_MINIMUM_PATTERN.exec(message) : null;
+    if (!match || !assetOf(match[2])) {
+        return null;
+    }
+    return { amount: Number(match[1]), assetCode: match[2] };
+}
+
+// The minimum as the user reads it: sats for the bitcoin legs ("1000 sats"),
+// two decimals otherwise ("10.000,00 ARS", "5.00 USDT"). Minimums are whole
+// cents, so the two decimals never hide a digit.
+export function formatMinimumAmount(amount, assetCode, lang) {
+    const asset = assetOf(assetCode);
+    if (hasUnitToggle(assetCode)) {
+        return `${fromBaseUnits(amount, 0)} sats`;
+    }
+    if (asset && asset.family !== "fiat") {
+        return `${(Number(amount) / 10 ** asset.decimals).toFixed(2)} ${asset.symbol}`;
+    }
+    return formatAssetAmount(amount, assetCode, { lang });
+}
+
 // How many decimals a *price* is worth showing in, per destination asset. The
 // backend sends the raw Decimal ("0.00001202832429805706477613484233"), which
 // is right for settling and unreadable on screen: a bitcoin price is
