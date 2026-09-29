@@ -526,14 +526,10 @@ export default function SwapsPage() {
         applyPair(pair.from, pair.to, reversedSide);
     };
 
-    // Top-right X, only with a session: back to where the user came from, or
-    // home when /swaps was opened directly (no history to go back to).
+    // Top-right X, only with a session: always home. Going back would land on
+    // an earlier /swaps entry of the same flow and look like nothing happened.
     const handleClose = () => {
-        if (typeof window !== "undefined" && window.history.length > 1) {
-            router.back();
-        } else {
-            router.push("/home");
-        }
+        router.push("/home");
     };
 
     const handleContinue = () => {
@@ -766,12 +762,15 @@ export default function SwapsPage() {
                             >
                                 {t.title}
                             </Paragraph>
-                            <Paragraph
-                                color={"$neutral11"}
-                                style={sans(13, { lineHeight: "18px" })}
-                            >
-                                {t.subtitle}
-                            </Paragraph>
+                            {/* The pitch belongs to the quote only; later phases are about this order. */}
+                            {phase === 1 ? (
+                                <Paragraph
+                                    color={"$neutral11"}
+                                    style={sans(13, { lineHeight: "18px" })}
+                                >
+                                    {t.subtitle}
+                                </Paragraph>
+                            ) : null}
                         </YStack>
 
                         {phase === 1 ? (
@@ -848,6 +847,9 @@ export default function SwapsPage() {
                                 errorText={translateError(tentativeError)}
                                 onRetryFunding={handleRetryFunding}
                                 retrying={retryingFunding}
+                                showNewSwap={Boolean(
+                                    tentative && TENTATIVE_TERMINAL_STATUSES.includes(tentative.status)
+                                )}
                                 onNewSwap={handleNewSwap}
                             />
                         ) : null}
@@ -859,6 +861,7 @@ export default function SwapsPage() {
                                 btcUnit={btcUnit}
                                 swap={swap}
                                 errorText={translateError(swapError)}
+                                showNewSwap={isTerminal}
                                 onNewSwap={handleNewSwap}
                             />
                         ) : null}
@@ -870,6 +873,7 @@ export default function SwapsPage() {
                                 swap={swap}
                                 loading={swapLoading}
                                 errorText={translateError(swapError)}
+                                showNewSwap={isTerminal}
                                 onNewSwap={handleNewSwap}
                             />
                         ) : null}

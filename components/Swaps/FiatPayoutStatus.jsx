@@ -95,6 +95,7 @@ export default function FiatPayoutStatus({
     errorText,
     onRetryFunding,
     retrying,
+    showNewSwap,
     onNewSwap,
 }) {
     const isWaiting = Boolean(tentative) && tentative.status === "FUNDING_ISSUED";
@@ -222,7 +223,7 @@ export default function FiatPayoutStatus({
 
             {errorText ? <ErrorText>{errorText}</ErrorText> : null}
 
-            <GhostButton onPress={onNewSwap}>{t.arsPayment.newOrder}</GhostButton>
+            {showNewSwap ? <GhostButton onPress={onNewSwap}>{t.arsPayment.newOrder}</GhostButton> : null}
         </Card>
     );
 }

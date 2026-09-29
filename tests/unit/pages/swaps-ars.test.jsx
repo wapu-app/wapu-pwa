@@ -217,9 +217,9 @@ describe("SwapsPage — ARS legs", () => {
         expect(mocks.getAccessToken).not.toHaveBeenCalled();
     });
 
-    it("shows ARS and the close button when logged in; the X goes back", async () => {
+    it("shows ARS and the close button when logged in; the X goes home", async () => {
         logIn();
-        // One in-app entry before /swaps, so there is somewhere to go back to.
+        // Even with history to go back to, the X must not land on an earlier /swaps entry.
         window.history.pushState({}, "", "/home");
         window.history.pushState({}, "", "/swaps");
         const user = userEvent.setup();
@@ -230,8 +230,8 @@ describe("SwapsPage — ARS legs", () => {
         expect(optionValues(screen.getByLabelText("select Recibís"))).toContain("ARS");
 
         await user.click(close);
-        expect(mocks.back).toHaveBeenCalledTimes(1);
-        expect(mocks.push).not.toHaveBeenCalled();
+        expect(mocks.push).toHaveBeenCalledWith("/home");
+        expect(mocks.back).not.toHaveBeenCalled();
     });
 
     it("stays logged out when the session refresh fails", async () => {
@@ -279,7 +279,7 @@ describe("SwapsPage — ARS legs", () => {
         // No refund address for pesos.
         expect(screen.queryByText(/Dirección de reembolso/)).not.toBeInTheDocument();
         await user.type(
-            screen.getByLabelText(/Dirección de destino/),
+            screen.getByLabelText(/Lightning address/),
             "satoshi@walletofsatoshi.com"
         );
         await user.click(screen.getByRole("button", { name: "Crear orden" }));
@@ -362,6 +362,38 @@ describe("SwapsPage — ARS legs", () => {
         expect(screen.getByText("Enviando tus fondos")).toBeInTheDocument();
     });
 
+    it("offers a new operation only once the purchase is over", async () => {
+        mocks.query = { id: SWAP_ID };
+        mocks.getSwap.mockResolvedValue({
+            data: { ...ARS_SWAP, status: "SENDING", deposit_txid: "fiwind:1" },
+            status: 200,
+        });
+        const { unmount } = renderWithTamagui(<SwapsPage />);
+        expect(await screen.findByText("Enviando tus fondos")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Iniciar otra operación" })).not.toBeInTheDocument();
+        unmount();
+
+        mocks.getSwap.mockResolvedValue({
+            data: { ...ARS_SWAP, status: "COMPLETED", deposit_txid: "fiwind:1" },
+            status: 200,
+        });
+        renderWithTamagui(<SwapsPage />);
+        expect(await screen.findByRole("button", { name: "Iniciar otra operación" })).toBeInTheDocument();
+    });
+
+    it("shows the pitch only on the quote screen", async () => {
+        renderWithTamagui(<SwapsPage />);
+        expect(await screen.findByText(/Sin KYC, sin custodia/)).toBeInTheDocument();
+    });
+
+    it("hides the pitch once the user is tracking an order", async () => {
+        mocks.query = { id: SWAP_ID };
+        mocks.getSwap.mockResolvedValue({ data: { ...ARS_SWAP, status: "SENDING" }, status: 200 });
+        renderWithTamagui(<SwapsPage />);
+        expect(await screen.findByText("Enviando tus fondos")).toBeInTheDocument();
+        expect(screen.queryByText(/Sin KYC, sin custodia/)).not.toBeInTheDocument();
+    });
+
     it("sells BTC Lightning for ARS through a fast_fiat_transfer tentative", async () => {
         logIn();
         const user = userEvent.setup();
@@ -438,7 +470,7 @@ describe("SwapsPage — ARS legs", () => {
         await user.type(input, side === "in" ? "15000" : "0.0001");
         await continueToPhase2(user);
         await user.type(
-            screen.getByLabelText(/Dirección de destino/),
+            screen.getByLabelText(/Lightning address/),
             "satoshi@walletofsatoshi.com"
         );
     };
