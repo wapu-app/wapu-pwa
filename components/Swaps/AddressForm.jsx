@@ -45,6 +45,10 @@ export default function AddressForm({
 
     const isArsBuy = flow === "arsBuy";
     const isLightningPayout = toAsset && toAsset.family === "lightning";
+    const payoutLabel = (isLightningPayout ? t.arsBuyAddress.lightningLabel : t.addresses.payoutLabel)(
+        toAsset ? toAsset.symbol : to,
+        toAsset ? toAsset.network : ""
+    );
 
     const errorFor = (assetCode, value) => {
         if (!String(value || "").trim()) {
@@ -78,17 +82,16 @@ export default function AddressForm({
                 <Paragraph color={"$brandOffWhite"} style={sans(18, { fontWeight: 800 })}>
                     {t.addresses.title}
                 </Paragraph>
-                <Paragraph color={"$neutral11"} style={sans(13)}>
-                    {isArsBuy ? t.arsBuyAddress.subtitle : t.addresses.subtitle}
-                </Paragraph>
+                {isArsBuy ? null : (
+                    <Paragraph color={"$neutral11"} style={sans(13)}>
+                        {t.addresses.subtitle}
+                    </Paragraph>
+                )}
             </YStack>
 
             <YStack gap={"$2"}>
                 <Overline>
-                    {t.addresses.payoutLabel(
-                        toAsset ? toAsset.symbol : to,
-                        toAsset ? toAsset.network : ""
-                    )}
+                    {payoutLabel}
                 </Overline>
                 <TextField
                     value={payoutAddress}
@@ -98,10 +101,7 @@ export default function AddressForm({
                             ? t.arsBuyAddress.lightningPlaceholder
                             : t.addresses.payoutPlaceholder
                     }
-                    ariaLabel={t.addresses.payoutLabel(
-                        toAsset ? toAsset.symbol : to,
-                        toAsset ? toAsset.network : ""
-                    )}
+                    ariaLabel={payoutLabel}
                     invalid={touched && Boolean(payoutError)}
                 />
                 {touched && payoutError ? <ErrorText>{payoutError}</ErrorText> : null}

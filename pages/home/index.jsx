@@ -178,7 +178,8 @@ export default function index() {
             )}
 
             <ExchangeRateCard onPress={() => setIsCalculatorOpen(true)} />
-            <BuyBitcoinCard />
+            {/* `/features swaps_home_card` in Telegram. Hidden until the user loads. */}
+            {user.swapsHomeCard === true ? <BuyBitcoinCard /> : null}
         </YStack>
     );
 }

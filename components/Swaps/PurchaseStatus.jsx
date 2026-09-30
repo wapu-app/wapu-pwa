@@ -45,7 +45,7 @@ function noticeFor(t, swap) {
 
 // Phase 3 of an ARS -> crypto purchase (a swap whose `from` is ARS). Polling
 // lives in pages/swaps; this component only renders the swap it is given.
-export default function PurchaseStatus({ t, lang, swap, btcUnit, errorText, onNewSwap }) {
+export default function PurchaseStatus({ t, lang, swap, btcUnit, errorText, showNewSwap, onNewSwap }) {
     const isWaiting = swap.status === "WAITING_DEPOSIT";
     const countdown = useCountdown(swap.expires_at, isWaiting);
     const underReview = isUnderReview(swap);
@@ -143,7 +143,7 @@ export default function PurchaseStatus({ t, lang, swap, btcUnit, errorText, onNe
             {/* No error_note for ARS: `error_code` drives the notice above. */}
             {errorText ? <ErrorText>{errorText}</ErrorText> : null}
 
-            <GhostButton onPress={onNewSwap}>{t.arsPayment.newOrder}</GhostButton>
+            {showNewSwap ? <GhostButton onPress={onNewSwap}>{t.arsPayment.newOrder}</GhostButton> : null}
         </Card>
     );
 }

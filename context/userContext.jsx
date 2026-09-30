@@ -132,6 +132,10 @@ export const UserContextProvider = ({ children }) => {
                     mandatoryAliasValidation: userData.data.settings
                         ? userData.data.settings.features.mandatory_alias_validation
                         : false,
+                    // A backend without the flag keeps the card, as before it existed.
+                    swapsHomeCard:
+                        userData.data.settings?.features?.swaps_home_card ??
+                        true,
                     lightningAddress: userData.data.lightning_address || null,
                 });
             } catch (error) {
