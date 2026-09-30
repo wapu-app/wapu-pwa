@@ -14,6 +14,7 @@ import { useRouter } from "next/router";
 import { getSettings } from "../../api/api";
 import NewInfoCard from "../../components/NewInfoCard/NewInfoCard";
 import ExchangeRateCard from "../../components/ExchangeRateCard/ExchangeRateCard";
+import BuyBitcoinCard from "../../components/BuyBitcoinCard/BuyBitcoinCard";
 import ExchangeRateCalculatorModal from "../../components/ExchangeRateCalculatorModal";
 
 export default function index() {
@@ -177,6 +178,8 @@ export default function index() {
             )}
 
             <ExchangeRateCard onPress={() => setIsCalculatorOpen(true)} />
+            {/* `/features swaps_home_card` in Telegram. Hidden until the user loads. */}
+            {user.swapsHomeCard === true ? <BuyBitcoinCard /> : null}
         </YStack>
     );
 }

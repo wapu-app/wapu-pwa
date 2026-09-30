@@ -12,6 +12,12 @@ export const COPIED_FEEDBACK_MS = 1500;
 // Shared copy-to-clipboard affordance. On tap the button turns green and a
 // green "Copied" bubble pops above it. It is not a hover tooltip on purpose:
 // this is a mobile PWA, so the feedback has to come from the tap itself.
+//
+// `copyLabel` names what the button copies, and is what a screen reader reads
+// out: a card with several of them (the swap status shows five) needs more than
+// five buttons all called "Copy". `copiedLabel` is the confirmation, so a
+// translated page can say it in its own language. Both default to the English
+// strings every existing call site relied on.
 export default function CopyButton({
     value,
     onError,
@@ -21,6 +27,8 @@ export default function CopyButton({
     colorLabel,
     fontSizeLabel,
     gap,
+    copyLabel = "Copy",
+    copiedLabel = "Copied",
 }) {
     const [copied, setCopied] = useState(false);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,13 +85,13 @@ export default function CopyButton({
                     }}
                 >
                     <Paragraph color={"$neutral13"} fontSize={"$5"}>
-                        Copied
+                        {copiedLabel}
                     </Paragraph>
                 </YStack>
             ) : null}
             <Button
                 onPress={handlePress}
-                aria-label={copied ? "Copied" : "Copy"}
+                aria-label={copied ? copiedLabel : copyLabel}
                 width={size ? size : "36px"}
                 height={size ? size : "36px"}
                 padding={0}

@@ -48,12 +48,17 @@ vi.mock("../../../hooks/useAmountNumpad", () => ({
 
 type SendFixture = {
     readonly combinedBalance: number;
-    readonly fastFiatTransferFee: number;
-    readonly fiatTransferFee: number;
+    readonly fastFiatTransferFee: number | undefined;
+    readonly fiatTransferFee: number | undefined;
     readonly mandatoryAliasValidation: boolean;
     readonly minPaymentAmountArs: number;
     readonly usdtBalance: number;
     readonly rateUsdtArsBuy: number;
+    readonly rates: readonly {
+        readonly pair: string;
+        readonly buy: number;
+        readonly sell: number;
+    }[];
 };
 
 const defaultFixture: SendFixture = {
@@ -64,6 +69,7 @@ const defaultFixture: SendFixture = {
     minPaymentAmountArs: 500,
     usdtBalance: 100,
     rateUsdtArsBuy: 1_000,
+    rates: [{ pair: "USDT/ARS", buy: 1_000, sell: 1_050 }],
 };
 
 function mockSendPage(fixture: SendFixture = defaultFixture): void {
@@ -74,6 +80,7 @@ function mockSendPage(fixture: SendFixture = defaultFixture): void {
             fiatTransferFee: fixture.fiatTransferFee,
             mandatoryAliasValidation: fixture.mandatoryAliasValidation,
             rateUsdtArsBuy: fixture.rateUsdtArsBuy,
+            rates: fixture.rates,
             showRecentFavContacts: false,
             usdtBalance: fixture.usdtBalance,
         },
@@ -207,6 +214,75 @@ describe("newSend ARS flow", () => {
             "/newTransactionPending?id=fiat-tx-123&transaction_type=fast_fiat_transfer"
         );
     });
+
+    it("fills the amount with everything the balance can cover on Max", async () => {
+        // combinedBalance mirrors what the backend reports: usdt_balance * buy.
+        mockSendPage({ ...defaultFixture, combinedBalance: 100_000 });
+        const user = userEvent.setup();
+
+        await chooseFastSend(user);
+        await user.type(
+            screen.getByPlaceholderText(/address or wapu id/i),
+            "ada.cvu"
+        );
+        await user.click(screen.getByRole("button", { name: /^next$/i }));
+
+        await user.click(screen.getByRole("button", { name: /^max$/i }));
+
+        // 100 USDT at a 4% fee: funding 96.15, fee 3.85, total 100.00.
+        // 96154 is the largest whole ARS amount rounding to that funding.
+        const amountInput = screen.getByPlaceholderText(
+            /enter amount/i
+        ) as HTMLInputElement;
+        expect(amountInput.value).toBe("96154");
+        expect(screen.getByRole("button", { name: /^next$/i })).toBeEnabled();
+    });
+
+    it.each([
+        ["fast send", 0.01, 0.005, "99014"],
+        ["standard send", 0.01, 0.005, "99504"],
+        ["fast send", 0, 0, "100004"],
+        ["standard send", 0, 0, "100004"],
+    ])(
+        "uses newly resolved user fees for %s Max (%s, %s)",
+        async (mode, fastFiatTransferFee, fiatTransferFee, expected) => {
+            const fixture = {
+                ...defaultFixture,
+                combinedBalance: 100_000,
+                fastFiatTransferFee: undefined,
+                fiatTransferFee: undefined,
+            };
+            mockSendPage(fixture);
+            vi.mocked(getSettings).mockResolvedValue({
+                fast_fiat_transfer_fee: 0.04,
+                fiat_transfer_fee: 0.02,
+                min_payment_amount_ars: 500,
+            });
+            const user = userEvent.setup();
+            const { rerender } = renderWithTamagui(<NewSendPage />);
+            await waitFor(() => expect(getSettings).toHaveBeenCalledOnce());
+            await user.click(
+                screen.getByRole("button", { name: new RegExp(mode, "i") })
+            );
+            await user.type(
+                screen.getByPlaceholderText(/address or wapu id/i),
+                "ada.cvu"
+            );
+            await user.click(screen.getByRole("button", { name: /^next$/i }));
+            await user.click(screen.getByRole("button", { name: /^max$/i }));
+            const amountInput = screen.getByPlaceholderText(
+                /enter amount/i
+            ) as HTMLInputElement;
+            expect(amountInput.value).toBe(
+                mode === "fast send" ? "96154" : "98044"
+            );
+
+            mockSendPage({ ...fixture, fastFiatTransferFee, fiatTransferFee });
+            rerender(<NewSendPage />);
+            await user.click(screen.getByRole("button", { name: /^max$/i }));
+            expect(amountInput.value).toBe(expected);
+        }
+    );
 
     it("uses the regular ARS transfer type for standard sends", async () => {
         const user = userEvent.setup();

@@ -28,6 +28,7 @@ import {
     sendFiat,
     getTransactionTentativeAmount,
 } from "../../api/api";
+import { maxFiatFromBalance } from "../../utils/exchangeCalculator";
 
 export default function index() {
     const router = useRouter();
@@ -43,7 +44,6 @@ export default function index() {
     const [errorModalState, setErrorModalState] = useState(false);
     const [buttonText, setButtonText] = useState("Send");
     const [accessToken, setAccessToken] = useState(null);
-    const [fee, setFee] = useState(null);
     const [fastTransferFee, setFastTransferFee] = useState(null);
     const [transferFee, setTransferFee] = useState(null);
     const [minPaymentAmount, setMinPaymentAmount] = useState(null);
@@ -130,11 +130,9 @@ export default function index() {
         setStep(2);
         if (mode) {
             if (mode === "fast") {
-                setFee(fastTransferFee);
                 setTransactionType("fast_fiat_transfer");
                 setButtonText("Fast Send");
             } else {
-                setFee(transferFee);
                 setTransactionType("fiat_transfer");
                 setButtonText("Send Fiat");
             }
@@ -184,26 +182,38 @@ export default function index() {
     };
 
     const maxAmount = () => {
-        if (
-            typeof fee === "number" &&
-            user?.usdtBalance !== undefined &&
-            user?.rateUsdtArsBuy !== undefined
-        ) {
-            let result = Math.floor(
-                // We are hardcoding to keep 0.01% to make the MAX work up to $1000 usd
-                (user.usdtBalance - user.usdtBalance * 0.01) *
-                    // fee is already a fraction (0.05 = 5%), same as send/index.jsx
-                    (1 - fee) *
-                    user.rateUsdtArsBuy
-            );
+        // User fees include discounts and can resolve after mode selection.
+        const isFastTransfer = transactionType === "fast_fiat_transfer";
+        const userFee = isFastTransfer
+            ? user.fastFiatTransferFee
+            : user.fiatTransferFee;
+        const fee =
+            typeof userFee === "number"
+                ? userFee
+                : isFastTransfer
+                  ? fastTransferFee
+                  : transferFee;
+        // Same quote engine as the home price calculator, run backwards. It
+        // reads rate.buy at full precision, unlike user.rateUsdtArsBuy, which
+        // the context truncates to 2 decimals.
+        const result = maxFiatFromBalance({
+            balanceUsdt: user.usdtBalance,
+            rates: user.rates,
+            fiatCurrency: currencyPayment,
+            feeFraction: fee,
+        });
 
-            setAmount(String(result));
-            setErrorMessage("");
-        } else {
+        if (result === null) {
             setErrorMessage(
                 "Unable to calculate max amount. Please check your balance and fee."
             );
+            return;
         }
+
+        // Routed through the regular handler so the max lands under the same
+        // minimum/balance checks that gate the Next button, instead of clearing
+        // the error and leaving Next disabled with nothing on screen.
+        handleAmountChange(String(result));
     };
 
     const handleConfirm = async () => {

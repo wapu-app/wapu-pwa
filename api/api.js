@@ -57,10 +57,23 @@ async function apiRequest({
     requiresAuth = true,
     credentials = "same-origin" // default value
 }) {
-    const accessToken = requiresAuth ? await getAccessToken() : null;
+    // requiresAuth accepts three values: true (session required), false (public
+    // endpoint) and "optional" — public endpoints that behave better for a
+    // logged-in caller (e.g. /swaps links the swap to the account). An optional
+    // call attaches the token when there is one and proceeds anonymously when
+    // there is not; it must never short-circuit with a 401.
+    const isOptionalAuth = requiresAuth === "optional";
+    let accessToken = null;
+    if (requiresAuth) {
+        try {
+            accessToken = await getAccessToken();
+        } catch {
+            accessToken = null;
+        }
+    }
     // Refresh failed / no session: don't fire "Authorization: Bearer undefined"
     // at the network. Return a 401 in the same shape callers already handle.
-    if (requiresAuth && !accessToken) {
+    if (requiresAuth && !isOptionalAuth && !accessToken) {
         return { data: { error: "Session expired" }, status: 401 };
     }
     let requestBody;
@@ -78,7 +91,7 @@ async function apiRequest({
         method,
         headers: {
             ...headers,
-            ...(requiresAuth && { Authorization: `Bearer ${accessToken}` }),
+            ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
         },
         credentials: credentials
     };
@@ -513,5 +526,103 @@ export async function revokeApiToken() {
     return await apiRequest({
         endpoint: "/users/api-token",
         method: "DELETE",
+    });
+}
+
+// Cross-chain swaps. Quote and lookup are public so /swaps works logged out;
+// creation is "optional" auth so a logged-in visitor gets the swap attached to
+// their account without blocking anonymous ones. Amounts travel as integer
+// base units of the asset (see components/Swaps/primitives).
+// `side` picks which leg the caller pinned: "in" prices forward (what do I get
+// for `amount`?), "out" asks the backend to solve for the input that pays out
+// `amount`. The response carries both amounts either way.
+export async function getSwapQuote(from, to, amount, side = "in") {
+    const query = new URLSearchParams({
+        from: from,
+        to: to,
+        [side === "out" ? "amount_out" : "amount"]: String(amount),
+    });
+
+    return await apiRequest({
+        endpoint: `/swaps/quote?${query.toString()}`,
+        requiresAuth: false,
+    });
+}
+
+export async function createSwap(swapData) {
+    return await apiRequest({
+        endpoint: "/swaps",
+        method: "POST",
+        body: swapData,
+        requiresAuth: "optional",
+    });
+}
+
+export async function getSwap(swapId) {
+    return await apiRequest({
+        endpoint: `/swaps/${swapId}`,
+        requiresAuth: false,
+    });
+}
+
+export async function getMySwaps() {
+    return await apiRequest({
+        endpoint: "/swaps",
+    });
+}
+
+// ARS -> crypto purchase; session required (the monthly ARS limit is per user).
+// Body: { to_asset, payout_address, amount_ars (centavos) | amount_out (base unit
+// of `to_asset`) }. The returned swap carries the final `amount_in_expected`.
+export async function createArsSwap(body) {
+    return await apiRequest({
+        endpoint: "/swaps/ars",
+        method: "POST",
+        body: body,
+    });
+}
+
+// Crypto -> ARS through direct-fiat tentatives (session required). Unlike swaps,
+// `amount_ars` is in pesos and `total_amount_usdt` in dollars — see
+// app_backend/docs/2026-04-02-direct-payment-tentative.md in wapu-app/survivors.
+export async function getDirectFiatQuote({ amountArs, fundingCurrency, fundingNetwork, type }) {
+    const query = new URLSearchParams({
+        amount_ars: String(amountArs),
+        funding_currency: fundingCurrency,
+        type: type,
+    });
+    if (fundingNetwork) {
+        query.set("funding_network", fundingNetwork);
+    }
+    return await apiRequest({
+        endpoint: `/transactions/direct-fiat/quote?${query.toString()}`,
+    });
+}
+
+export async function createDirectFiatTentative(body) {
+    return await apiRequest({
+        endpoint: "/transactions/direct-fiat/tentatives",
+        method: "POST",
+        body: body,
+    });
+}
+
+// Idempotent on the backend: a repeated call returns the instructions already
+// issued, so a retry after a network error is safe.
+export async function requestDirectFiatFunding(tentativeId) {
+    const response = await apiRequest({
+        endpoint: `/transactions/direct-fiat/tentatives/${encodeURIComponent(tentativeId)}/funding`,
+        method: "POST",
+        body: {},
+    });
+    if (isOkStatus(response.status)) {
+        invalidate(CACHE_KEY.TRANSACTIONS);
+    }
+    return response;
+}
+
+export async function getDirectFiatTentative(tentativeId) {
+    return await apiRequest({
+        endpoint: `/transactions/direct-fiat/tentatives/${encodeURIComponent(tentativeId)}`,
     });
 }

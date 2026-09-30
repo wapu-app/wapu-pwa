@@ -155,6 +155,66 @@ export const estimateFromDeposit = ({
     return buildQuote({ fundingUsdt, cryptoCurrency, ...inputs });
 };
 
+// Largest whole fiat amount whose forward quote fits inside `balanceUsdt`.
+// Search the rounded quote itself: algebraically inverting the fee can miss
+// affordable funding cents and the top of a fiat-to-funding rounding plateau.
+export const maxFiatFromBalance = ({
+    balanceUsdt,
+    rates,
+    fiatCurrency,
+    feeFraction,
+}) => {
+    const inputs = resolveInputs({
+        rates,
+        cryptoCurrency: "USDT",
+        fiatCurrency,
+        feeFraction,
+    });
+    const balance = parseFloat(balanceUsdt);
+    if (!inputs || !(Number.isFinite(balance) && balance > 0)) {
+        return null;
+    }
+
+    if (inputs.feeFraction <= -1 || !Number.isFinite(inputs.exchangeRate)) {
+        return null;
+    }
+
+    // Allow a cent for rounding the fee/total and another for rounding funding.
+    // This keeps the upper bound above every affordable forward quote.
+    const upperBound = Math.floor(
+        ((balance + 0.01) / (1 + inputs.feeFraction) + 0.01) *
+            inputs.exchangeRate
+    );
+    if (!Number.isSafeInteger(upperBound)) {
+        return null;
+    }
+
+    let low = 1;
+    let high = upperBound;
+    let maximum = null;
+    while (low <= high) {
+        const fiatAmount = low + Math.floor((high - low) / 2);
+        const quote = estimateFromFiat({
+            fiatAmount: String(fiatAmount),
+            rates,
+            cryptoCurrency: "USDT",
+            fiatCurrency,
+            feeFraction,
+        });
+        if (!quote || quote.totalUsdt <= balance) {
+            // Tiny fiat amounts may round to zero funding (no quote). Larger
+            // candidates can still produce a positive, affordable quote.
+            if (quote) {
+                maximum = fiatAmount;
+            }
+            low = fiatAmount + 1;
+        } else {
+            high = fiatAmount - 1;
+        }
+    }
+    return maximum;
+};
+
 // Fee-free USDT -> sats. Mirrors buildQuote's sat leg exactly (round2 on the
 // USDT side, ceil on the sat side) so a USD-denominated amount lands on the
 // same integer the BTC quote would produce.
