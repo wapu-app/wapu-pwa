@@ -23,10 +23,12 @@ import {
     directFiatDepositBaseUnits,
     displayDecimals,
     flowOf,
+    formatMinimumAmount,
     fromBaseUnits,
     fundingRailOf,
     isSupportedPair,
     normalizePair,
+    parseBelowMinimum,
     receiveOptions,
     resolveLoggedIn,
     sans,
@@ -63,6 +65,19 @@ const DIRECT_FIAT_TYPE = "fast_fiat_transfer";
 // fall back to the plan's `ars_swap_late_watch_minutes` (60) after `expires_at`.
 // See docs/swaps-page.md.
 const ARS_LATE_WATCH_MS = 60 * 60 * 1000;
+
+// A backend error message, reworded when it speaks in base units: the user
+// never reads "base units" on this page.
+function backendError(message) {
+    const minimum = parseBelowMinimum(message);
+    if (minimum) {
+        return { key: "belowMinimum", minimum };
+    }
+    if (typeof message === "string" && /base units/i.test(message)) {
+        return { key: "invalidAmount" };
+    }
+    return { message };
+}
 
 function lateWatchEnd(swap) {
     if (swap.late_watch_until) {
@@ -319,7 +334,7 @@ export default function SwapsPage() {
                         status === 401
                             ? { key: "authRequired" }
                             : data && data.error
-                              ? { message: data.error }
+                              ? backendError(data.error)
                               : { key: "quoteFailed" }
                     );
                 }
@@ -373,7 +388,7 @@ export default function SwapsPage() {
                 } else {
                     setSwapError(
                         data && data.error
-                            ? { message: data.error }
+                            ? backendError(data.error)
                             : { key: "network" }
                     );
                 }
@@ -424,7 +439,7 @@ export default function SwapsPage() {
                     setTentativePollStopped(true);
                 } else {
                     setTentativeError(
-                        data && data.error ? { message: data.error } : { key: "network" }
+                        data && data.error ? backendError(data.error) : { key: "network" }
                     );
                 }
             } catch {
@@ -451,12 +466,17 @@ export default function SwapsPage() {
             if (!error) {
                 return null;
             }
+            if (error.key === "belowMinimum") {
+                return t.errors.belowMinimum(
+                    formatMinimumAmount(error.minimum.amount, error.minimum.assetCode, lang)
+                );
+            }
             if (error.key) {
                 return t.errors[error.key] || t.errors.network;
             }
             return error.message;
         },
-        [t]
+        [t, lang]
     );
 
     // Typing in a field pins that side of the quote.
@@ -547,7 +567,7 @@ export default function SwapsPage() {
             return { key: "rateLimited" };
         }
         if (data && data.error) {
-            return { message: data.error };
+            return backendError(data.error);
         }
         if (status === 409) {
             return { key: "noLiquidity" };
