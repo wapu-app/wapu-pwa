@@ -240,13 +240,22 @@ export async function checkUsernameAvailability(username) {
     return data.is_valid;
 }
 
-export async function getTransactions() {
-    return getOrFetch(
-        CACHE_KEY.TRANSACTIONS,
-        CACHE_TTL.TRANSACTIONS,
-        () => apiRequest({ endpoint: "/transactions/my_transactions" }),
-        { shouldCache: (res) => isOkStatus(res.status) }
-    );
+// Rows per page of the history (transactions and swaps merged by the backend).
+export const HISTORY_PAGE_SIZE = 7;
+
+// Only page 1 is cached, under the fixed key every mutation already
+// invalidates; later pages are fetched fresh, since invalidate() is exact-key.
+export async function getTransactions(page = 1) {
+    const request = () =>
+        apiRequest({
+            endpoint: `/transactions/my_transactions?page=${page}&per_page=${HISTORY_PAGE_SIZE}`,
+        });
+    if (page !== 1) {
+        return request();
+    }
+    return getOrFetch(CACHE_KEY.TRANSACTIONS, CACHE_TTL.TRANSACTIONS, request, {
+        shouldCache: (res) => isOkStatus(res.status),
+    });
 }
 
 export const getTransaction = async (trx_id) => {
@@ -550,12 +559,17 @@ export async function getSwapQuote(from, to, amount, side = "in") {
 }
 
 export async function createSwap(swapData) {
-    return await apiRequest({
+    const response = await apiRequest({
         endpoint: "/swaps",
         method: "POST",
         body: swapData,
         requiresAuth: "optional",
     });
+    // A logged-in swap shows in the history.
+    if (isOkStatus(response.status)) {
+        invalidate(CACHE_KEY.TRANSACTIONS);
+    }
+    return response;
 }
 
 export async function getSwap(swapId) {
@@ -575,11 +589,15 @@ export async function getMySwaps() {
 // Body: { to_asset, payout_address, amount_ars (centavos) | amount_out (base unit
 // of `to_asset`) }. The returned swap carries the final `amount_in_expected`.
 export async function createArsSwap(body) {
-    return await apiRequest({
+    const response = await apiRequest({
         endpoint: "/swaps/ars",
         method: "POST",
         body: body,
     });
+    if (isOkStatus(response.status)) {
+        invalidate(CACHE_KEY.TRANSACTIONS);
+    }
+    return response;
 }
 
 // Crypto -> ARS through direct-fiat tentatives (session required). Unlike swaps,
