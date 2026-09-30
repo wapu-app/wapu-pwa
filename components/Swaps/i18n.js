@@ -14,10 +14,10 @@ export const LANG_STORAGE_KEY = "wapu-swaps-lang";
 export const TRANSLATIONS = {
     es: {
         langLabel: "Idioma",
-        badge: "Intercambio cripto",
+        badge: "Intercambio",
         title: "Intercambiá Bitcoin en minutos",
         subtitle:
-            "Sin cuenta, sin custodia prolongada. Cotizá, enviá el depósito y recibí en la red que elijas.",
+            "Sin KYC, sin custodia. Cotizá, enviá el depósito y recibí en la red que elijas.",
 
         quote: {
             youSend: "Vos enviás",
@@ -131,7 +131,7 @@ export const TRANSLATIONS = {
         },
 
         arsBuyAddress: {
-            subtitle: "Decinos a dónde enviamos lo que comprás.",
+            lightningLabel: (asset, network) => `Lightning address (${asset} · ${network})`,
             lightningPlaceholder: "usuario@dominio.com",
             invalidLightning: "Ingresá una lightning address válida (usuario@dominio).",
             finalAmountHint:
@@ -222,10 +222,10 @@ export const TRANSLATIONS = {
 
     en: {
         langLabel: "Language",
-        badge: "Crypto swap",
+        badge: "Swap",
         title: "Swap Bitcoin in minutes",
         subtitle:
-            "No account, no long custody. Get a quote, send the deposit and receive on the network you pick.",
+            "No KYC, no custody. Get a quote, send the deposit and receive on the network you pick.",
 
         quote: {
             youSend: "You send",
@@ -338,7 +338,7 @@ export const TRANSLATIONS = {
         },
 
         arsBuyAddress: {
-            subtitle: "Tell us where to send what you buy.",
+            lightningLabel: (asset, network) => `Lightning address (${asset} · ${network})`,
             lightningPlaceholder: "user@domain.com",
             invalidLightning: "Enter a valid lightning address (user@domain).",
             finalAmountHint:

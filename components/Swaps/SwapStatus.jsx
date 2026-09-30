@@ -173,7 +173,7 @@ export function TxidRow({ t, label, txid, assetCode }) {
 
 // Phase 3: the deposit instructions and the live status of an existing swap.
 // Polling happens in pages/swaps; this component only renders what it is given.
-export default function SwapStatus({ t, swap, btcUnit, loading, errorText, onNewSwap }) {
+export default function SwapStatus({ t, swap, btcUnit, loading, errorText, showNewSwap, onNewSwap }) {
     const isWaiting = Boolean(swap) && swap.status === "WAITING_DEPOSIT";
     const countdown = useCountdown(swap && swap.expires_at, isWaiting);
 
@@ -366,7 +366,7 @@ export default function SwapStatus({ t, swap, btcUnit, loading, errorText, onNew
             {swap.error_note ? <ErrorText>{swap.error_note}</ErrorText> : null}
             {errorText ? <ErrorText>{errorText}</ErrorText> : null}
 
-            <GhostButton onPress={onNewSwap}>{t.status.newSwap}</GhostButton>
+            {showNewSwap ? <GhostButton onPress={onNewSwap}>{t.status.newSwap}</GhostButton> : null}
         </Card>
     );
 }
