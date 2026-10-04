@@ -10,7 +10,10 @@ import FiatDetailsForm from "../../components/Swaps/FiatDetailsForm";
 import FiatPayoutStatus, {
     TENTATIVE_TERMINAL_STATUSES,
 } from "../../components/Swaps/FiatPayoutStatus";
-import PurchaseStatus from "../../components/Swaps/PurchaseStatus";
+import PurchaseStatus, {
+    isPurchaseTentative,
+    purchaseOrderOf,
+} from "../../components/Swaps/PurchaseStatus";
 import QuoteCard from "../../components/Swaps/QuoteCard";
 import SwapStatus, { TERMINAL_STATUSES } from "../../components/Swaps/SwapStatus";
 import { SUPPORTED_LANGS, useSwapsLang } from "../../components/Swaps/i18n";
@@ -19,6 +22,7 @@ import {
     DEFAULT_BTC_UNIT,
     Overline,
     arsCentsToPlain,
+    baseUnitsToPurchaseAmount,
     convertUnitText,
     directFiatDepositBaseUnits,
     displayDecimals,
@@ -29,6 +33,8 @@ import {
     isSupportedPair,
     normalizePair,
     parseBelowMinimum,
+    purchaseAmountToBaseUnits,
+    purchaseTargetOf,
     receiveOptions,
     resolveLoggedIn,
     sans,
@@ -36,9 +42,10 @@ import {
     toBaseUnits,
 } from "../../components/Swaps/primitives";
 import {
-    createArsSwap,
+    createCryptoPurchaseTentative,
     createDirectFiatTentative,
     createSwap,
+    getCryptoPurchaseQuote,
     getDirectFiatQuote,
     getDirectFiatTentative,
     getSwap,
@@ -77,6 +84,23 @@ function backendError(message) {
         return { key: "invalidAmount" };
     }
     return { message };
+}
+
+// A direct-fiat purchase quote in the swap-quote shape QuoteCard and
+// AddressForm read: amounts in base units, fee in bps. `purchase_amount_out`
+// keeps the API's own unit (sats or USDT cents) for the creation request.
+function purchaseQuoteOf(data, to) {
+    return {
+        ...data,
+        amount_in: data.amount_ars_cents,
+        amount_out: purchaseAmountToBaseUnits(data.amount_out, to),
+        purchase_amount_out: data.amount_out,
+        min_amount_in: data.min_amount_ars_cents,
+        fee_bps: data.total_amount_usdt
+            ? Math.round((data.fee_amount_usdt * 10000) / data.total_amount_usdt)
+            : null,
+        fee_estimate_sats: data.amount_out_unit === "sats" ? data.network_fee_out : null,
+    };
 }
 
 function lateWatchEnd(swap) {
@@ -223,8 +247,8 @@ export default function SwapsPage() {
 
     // The status phase must survive a refresh or a shared link, so the order id
     // lives in the URL and is read back once the router has hydrated its query.
-    // Swaps (crypto and ARS purchases) use `?id=`; crypto -> ARS orders are
-    // direct-fiat tentatives, a different resource, and use `?tentative=`.
+    // Crypto swaps (and legacy ARS purchase swaps) use `?id=`; ARS purchases and
+    // sales are direct-fiat tentatives, a different resource, and use `?tentative=`.
     useEffect(() => {
         if (!router.isReady) {
             return;
@@ -292,8 +316,10 @@ export default function SwapsPage() {
         const timer = setTimeout(async () => {
             try {
                 const isArsSell = flowOf(from, to) === "arsSell";
+                const isArsBuy = flowOf(from, to) === "arsBuy";
                 const rail = fundingRailOf(from);
                 // Direct-fiat quote: priced from the ARS amount only, in pesos.
+                // A purchase pins ARS centavos or the output in sats / USDT cents.
                 const { data, status } = isArsSell
                     ? await getDirectFiatQuote({
                           amountArs: arsCentsToPlain(pinnedAmount),
@@ -301,12 +327,20 @@ export default function SwapsPage() {
                           fundingNetwork: rail.network,
                           type: DIRECT_FIAT_TYPE,
                       })
-                    : await getSwapQuote(from, to, pinnedAmount, side);
+                    : isArsBuy
+                      ? await getCryptoPurchaseQuote({
+                            ...purchaseTargetOf(to),
+                            ...(side === "out"
+                                ? { amount_out: baseUnitsToPurchaseAmount(pinnedAmount, to) }
+                                : { amount_ars_cents: pinnedAmount }),
+                        })
+                      : await getSwapQuote(from, to, pinnedAmount, side);
                 if (cancelled) {
                     return;
                 }
                 if (status === 200 && data && !data.error) {
-                    setQuote(data);
+                    const quoted = isArsBuy ? purchaseQuoteOf(data, to) : data;
+                    setQuote(quoted);
                     setQuoteError(null);
                     // Mirror the resolved counterpart into the other field.
                     if (isArsSell) {
@@ -318,11 +352,11 @@ export default function SwapsPage() {
                         );
                     } else if (side === "in") {
                         setAmountOut(
-                            fromBaseUnits(data.amount_out, displayDecimals(to, btcUnit)) || ""
+                            fromBaseUnits(quoted.amount_out, displayDecimals(to, btcUnit)) || ""
                         );
                     } else {
                         setAmount(
-                            fromBaseUnits(data.amount_in, displayDecimals(from, btcUnit)) || ""
+                            fromBaseUnits(quoted.amount_in, displayDecimals(from, btcUnit)) || ""
                         );
                     }
                 } else {
@@ -411,9 +445,12 @@ export default function SwapsPage() {
         };
     }, [swapId, isTerminal, swapPollStopped]);
 
-    // Same polling for a crypto -> ARS order, on its own resource.
+    // Same polling for a direct-fiat order, on its own resource. `watch_pending`
+    // keeps an EXPIRED purchase alive: the bank may still report its payment.
     const isTentativeTerminal =
-        Boolean(tentative) && TENTATIVE_TERMINAL_STATUSES.includes(tentative.status);
+        Boolean(tentative) &&
+        TENTATIVE_TERMINAL_STATUSES.includes(tentative.status) &&
+        !tentative.watch_pending;
     const tentativeRef = useRef(null);
     tentativeRef.current = tentative;
     useEffect(() => {
@@ -594,28 +631,21 @@ export default function SwapsPage() {
         if (!tentativeId) {
             return;
         }
+        // Buying with pesos needs a session; never fund a purchase anonymously.
+        if (isPurchaseTentative(tentative) && !loggedIn) {
+            setTentativeError({ key: "authRequired" });
+            return;
+        }
         setRetryingFunding(true);
         await issueFunding(tentativeId);
         setTentativePollStopped(false);
         setRetryingFunding(false);
     };
 
-    // A failed /funding leaves the tentative in CREATED; the status screen offers the retry.
-    const handleCreateTentative = async () => {
-        const rail = fundingRailOf(from);
-        const body = {
-            amount_ars: quote.amount_ars,
-            type: DIRECT_FIAT_TYPE,
-            alias: alias.trim(),
-            funding_currency: rail.funding_currency,
-        };
-        if (rail.network) {
-            body.network = rail.network;
-        }
-        if (receiverName.trim()) {
-            body.receiver_name = receiverName.trim();
-        }
-        const { data, status } = await createDirectFiatTentative(body);
+    // A failed /funding leaves the tentative in CREATED; the status screen offers
+    // the retry without recreating the order.
+    const handleCreateTentative = async (create) => {
+        const { data, status } = await create();
         if (status !== 201 || !data || !data.tentative_id) {
             setCreateError(errorOf(status, data, "createFailed"));
             return;
@@ -629,6 +659,34 @@ export default function SwapsPage() {
         router.push(`/swaps?tentative=${data.tentative_id}`, undefined, { shallow: true });
     };
 
+    const createSaleTentative = () => {
+        const rail = fundingRailOf(from);
+        const body = {
+            amount_ars: quote.amount_ars,
+            type: DIRECT_FIAT_TYPE,
+            alias: alias.trim(),
+            funding_currency: rail.funding_currency,
+        };
+        if (rail.network) {
+            body.network = rail.network;
+        }
+        if (receiverName.trim()) {
+            body.receiver_name = receiverName.trim();
+        }
+        return createDirectFiatTentative(body);
+    };
+
+    // ARS purchases send the pinned side: `amount_ars_cents` or `amount_out`
+    // (sats / USDT cents); the final ARS amount comes back after funding.
+    const createPurchaseTentative = () =>
+        createCryptoPurchaseTentative({
+            ...purchaseTargetOf(to),
+            payout_address: payoutAddress.trim(),
+            ...(side === "out"
+                ? { amount_out: quote.purchase_amount_out }
+                : { amount_ars_cents: quote.amount_in }),
+        });
+
     const handleCreate = async () => {
         if (!quote) {
             return;
@@ -636,28 +694,19 @@ export default function SwapsPage() {
         setCreating(true);
         setCreateError(null);
         try {
-            if (flow === "arsSell") {
-                await handleCreateTentative();
+            if (flow !== "swap") {
+                await handleCreateTentative(
+                    flow === "arsSell" ? createSaleTentative : createPurchaseTentative
+                );
                 return;
             }
-            // ARS purchases send the pinned side: `amount_ars` (centavos) or
-            // `amount_out` (base units); the amount to transfer comes back in the swap.
-            const { data, status } =
-                flow === "arsBuy"
-                    ? await createArsSwap({
-                          to_asset: to,
-                          payout_address: payoutAddress.trim(),
-                          ...(side === "out"
-                              ? { amount_out: quote.amount_out }
-                              : { amount_ars: quote.amount_in }),
-                      })
-                    : await createSwap({
-                          from,
-                          to,
-                          amount_in: quote.amount_in,
-                          payout_address: payoutAddress.trim(),
-                          refund_address: refundAddress.trim(),
-                      });
+            const { data, status } = await createSwap({
+                from,
+                to,
+                amount_in: quote.amount_in,
+                payout_address: payoutAddress.trim(),
+                refund_address: refundAddress.trim(),
+            });
             if (status === 201 && data && data.swap_id) {
                 setSwap(data);
                 setSwapId(data.swap_id);
@@ -857,7 +906,21 @@ export default function SwapsPage() {
                             />
                         ) : null}
 
-                        {phase === 3 && tentativeId ? (
+                        {phase === 3 && tentativeId && isPurchaseTentative(tentative) ? (
+                            <PurchaseStatus
+                                t={t}
+                                lang={lang}
+                                btcUnit={btcUnit}
+                                swap={purchaseOrderOf(tentative)}
+                                errorText={translateError(tentativeError)}
+                                onRetryFunding={handleRetryFunding}
+                                retrying={retryingFunding}
+                                showNewSwap={isTentativeTerminal}
+                                onNewSwap={handleNewSwap}
+                            />
+                        ) : null}
+
+                        {phase === 3 && tentativeId && !isPurchaseTentative(tentative) ? (
                             <FiatPayoutStatus
                                 t={t}
                                 lang={lang}
@@ -867,9 +930,7 @@ export default function SwapsPage() {
                                 errorText={translateError(tentativeError)}
                                 onRetryFunding={handleRetryFunding}
                                 retrying={retryingFunding}
-                                showNewSwap={Boolean(
-                                    tentative && TENTATIVE_TERMINAL_STATUSES.includes(tentative.status)
-                                )}
+                                showNewSwap={isTentativeTerminal}
                                 onNewSwap={handleNewSwap}
                             />
                         ) : null}

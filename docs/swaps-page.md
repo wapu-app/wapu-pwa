@@ -117,20 +117,47 @@ or `/home` when there is no history).
 | Flow | Pairs | Backend |
 |------|-------|---------|
 | `swap` | crypto <-> crypto | `/swaps` as above |
-| `arsBuy` | `ARS` -> BTC Lightning, BTC, USDT Liquid/Ethereum/Polygon | `GET /swaps/quote`, `POST /swaps/ars` (`amount_ars` in centavos or `amount_out`), `GET /swaps/<uuid>` |
+| `arsBuy` | `ARS` -> BTC Lightning, BTC, L-BTC, USDT Liquid/Ethereum/Polygon | direct-fiat tentatives with `type: "crypto_purchase"` (P2P ramp-on) |
 | `arsSell` | BTC Lightning, L-BTC, USDT Liquid -> `ARS` | direct-fiat tentatives, always `fast_fiat_transfer` |
 
-- **`arsBuy`** has no refund address: pesos are never refunded on-chain, an
-  operator handles it. The status screen (`PurchaseStatus`,
-  `ArsPaymentInstructions`) shows the Fiwind alias and `amount_in_expected`
-  from the order, not from the quote: the backend adds the fee delta and the
-  identifying cents. The amount always has two decimals (`formatArsCents`),
-  with a warning that a different amount is not detected. The backend signals
-  "under review" (the user already paid, an operator reviews it) with
-  `error_code: "under_review"`; `FAILED` with a `deposit_txid` reads the same as
-  a fallback. An `EXPIRED` purchase keeps polling until
-  `late_watch_until` (sent by the backend; 60 minutes after `expires_at` when
-  absent), because a transfer made before `expires_at` still executes.
+- **`arsBuy`** is a direct-fiat purchase: the buyer transfers ARS to another
+  Wapu user (the receiver) and the backend sends the crypto out. It never uses
+  `/swaps`. Each target maps to a `(payout_currency, payout_network)` pair in
+  `PURCHASE_TARGETS` (`components/Swaps/primitives.jsx`):
+
+  | Target | `payout_currency` | `payout_network` | `amount_out` unit |
+  |---|---|---|---|
+  | `BTC` | `SAT` | `BITCOIN` | sats |
+  | `BTC_LIGHTNING` | `SAT` | `LIGHTNING` | sats |
+  | `LBTC` | `LBTC` | `LIQUID` | sats |
+  | `USDT_LIQUID` / `USDT_ETHEREUM` / `USDT_POLYGON` | `USDT` | `LIQUID` / `ETHEREUM` / `POLYGON` | USDT cents |
+
+  The quote and the creation send exactly one of `amount_ars_cents` or
+  `amount_out` (the pinned side); creation adds `payout_address` (a Lightning
+  **address** for `BTC_LIGHTNING`, never an invoice). The page converts USDT
+  cents to the chain's base units for display (`purchaseAmountToBaseUnits`)
+  and adapts the quote to the swap-quote shape `QuoteCard` reads. Submitting
+  creates the tentative and calls `/funding`, like `arsSell`; a failed
+  `/funding` keeps the order in `CREATED` and the status screen retries it
+  without recreating it. Funding a purchase needs a session.
+- The purchase status screen picks `PurchaseStatus` by the tentative's
+  `type`/`direction` (`isPurchaseTentative`), never by the mere presence of
+  `?tentative=`. `purchaseOrderOf` maps the payload onto the order
+  `PurchaseStatus` and `ArsPaymentInstructions` render. Alias and CVU appear
+  only after funding, and the amount shown is `amount_ars_cents` from the
+  funded order, not the quote: the backend may bump it a few cents to make the
+  transfer unique. The amount always has two decimals (`formatArsCents`), with
+  a warning that a different amount is not detected. Copy: waiting for the
+  ARS transfer (`FUNDING_ISSUED`), sending crypto (`EXECUTED`), under review
+  (`payout_status: "review"`), completed, and `SETTLED_TO_BALANCE`, worded as
+  credited to the Wapu balance, never as crypto delivered. An `EXPIRED`
+  purchase keeps polling while `watch_pending` is true: the bank may still
+  report a payment made in time.
+- Legacy ARS purchase swaps (`?id=<uuid>` with `from: "ARS"`) still render
+  read-only through `PurchaseStatus`: "under review" is
+  `error_code: "under_review"` (or `FAILED` with a `deposit_txid`), and an
+  `EXPIRED` one polls until `late_watch_until` (60 minutes after `expires_at`
+  when absent).
 - **`arsSell`** prices only from the ARS amount (direct-fiat quote, pesos), so
   "you send" is read-only. Phase 2 asks for the alias/CBU/CVU and an optional
   holder name; the backend validates the alias/CBU/CVU (optionally against
@@ -140,7 +167,8 @@ or `/home` when there is no history).
   statuses are not swap statuses: `EXECUTED` is not final, the fiat transfer is
   still going out. The
   order lives at `/swaps?tentative=<id>` (`FiatPayoutStatus`). A tentative
-  still in `CREATED` offers to issue the instructions again.
+  still in `CREATED` offers to issue the instructions again. Direct-fiat polling
+  stops at a terminal status unless the payload says `watch_pending: true`.
 - A `401` or `404` from `GET /swaps/<uuid>` or the tentative endpoint stops
   polling until the user acts (retry or new order): these do not fix
   themselves, and the tentative endpoint would refresh the session every tick.
@@ -162,7 +190,8 @@ All calls go through `api/api.js` — no raw `fetch` in the page or components.
 | `createSwap(body)`               | `POST /swaps`                              | optional   |
 | `getSwap(uuid)`                  | `GET /swaps/<uuid>`                        | none       |
 | `getMySwaps()`                   | `GET /swaps`                               | required   |
-| `createArsSwap(body)`            | `POST /swaps/ars`                          | required   |
+| `getCryptoPurchaseQuote(params)` | `GET /transactions/direct-fiat/quote?type=crypto_purchase` | required |
+| `createCryptoPurchaseTentative(body)` | `POST /transactions/direct-fiat/tentatives` (`type: "crypto_purchase"`) | required |
 | `getDirectFiatQuote(args)`       | `GET /transactions/direct-fiat/quote`      | required   |
 | `createDirectFiatTentative(body)`| `POST /transactions/direct-fiat/tentatives`| required   |
 | `requestDirectFiatFunding(id)`   | `POST /transactions/direct-fiat/tentatives/<id>/funding` | required |

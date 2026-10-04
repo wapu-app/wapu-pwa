@@ -2,16 +2,21 @@ import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { PURCHASE_QUOTE, PURCHASE, FUNDED_PURCHASE } from "../../fixtures/crypto-purchase";
+
 import SwapsPage from "../../../pages/swaps";
 import { renderWithTamagui } from "../../test-utils";
 
-// ARS legs of /swaps: login gate, close button, ARS purchase (POST /swaps/ars)
+// ARS legs of /swaps: login gate, close button, ARS purchase (direct-fiat
+// crypto_purchase tentatives; legacy ARS swaps read-only)
 // and crypto -> ARS (direct-fiat tentatives). The Tamagui Select does not open
 // under jsdom, so CalcSelect is replaced by a native <select> with the same
 // { value, onChange, options, label } contract.
 
 const mocks = vi.hoisted(() => ({
     createArsSwap: vi.fn(),
+    createCryptoPurchaseTentative: vi.fn(),
+    getCryptoPurchaseQuote: vi.fn(),
     createDirectFiatTentative: vi.fn(),
     createSwap: vi.fn(),
     getDirectFiatQuote: vi.fn(),
@@ -71,6 +76,8 @@ vi.mock("../../../components/CalcSelect", async () => {
 });
 
 vi.mock("../../../api/api", () => ({
+    createCryptoPurchaseTentative: (body) => mocks.createCryptoPurchaseTentative(body),
+    getCryptoPurchaseQuote: (params) => mocks.getCryptoPurchaseQuote(params),
     createArsSwap: (body) => mocks.createArsSwap(body),
     createDirectFiatTentative: (body) => mocks.createDirectFiatTentative(body),
     createSwap: (body) => mocks.createSwap(body),
@@ -249,9 +256,10 @@ describe("SwapsPage — ARS legs", () => {
     it("buys BTC Lightning with ARS: centavos out, exact amount with cents back", async () => {
         logIn();
         const user = userEvent.setup();
-        mocks.getSwapQuote.mockResolvedValue({ data: ARS_QUOTE, status: 200 });
-        mocks.createArsSwap.mockResolvedValue({ data: ARS_SWAP, status: 201 });
-        mocks.getSwap.mockResolvedValue({ data: ARS_SWAP, status: 200 });
+        mocks.getCryptoPurchaseQuote.mockResolvedValue({ data: PURCHASE_QUOTE, status: 200 });
+        mocks.createCryptoPurchaseTentative.mockResolvedValue({ data: PURCHASE, status: 201 });
+        mocks.requestDirectFiatFunding.mockResolvedValue({ data: FUNDED_PURCHASE, status: 201 });
+        mocks.getDirectFiatTentative.mockResolvedValue({ data: FUNDED_PURCHASE, status: 200 });
         renderWithTamagui(<SwapsPage />);
 
         await screen.findByRole("button", { name: "Cerrar" });
@@ -265,12 +273,9 @@ describe("SwapsPage — ARS legs", () => {
         await user.type(input, "15000");
         await waitFor(
             () =>
-                expect(mocks.getSwapQuote).toHaveBeenCalledWith(
-                    "ARS",
-                    "BTC_LIGHTNING",
-                    1500000,
-                    "in"
-                ),
+                expect(mocks.getCryptoPurchaseQuote).toHaveBeenCalledWith({
+                    payout_currency: "SAT", payout_network: "LIGHTNING", amount_ars_cents: 1500000
+                }),
             { timeout: 3000 }
         );
         expect(await screen.findByText("~26 sats")).toBeInTheDocument();
@@ -285,20 +290,88 @@ describe("SwapsPage — ARS legs", () => {
         await user.click(screen.getByRole("button", { name: "Crear orden" }));
 
         await waitFor(() =>
-            expect(mocks.createArsSwap).toHaveBeenCalledWith({
-                to_asset: "BTC_LIGHTNING",
+            expect(mocks.createCryptoPurchaseTentative).toHaveBeenCalledWith({
+                payout_currency: "SAT", payout_network: "LIGHTNING",
                 payout_address: "satoshi@walletofsatoshi.com",
-                amount_ars: 1500000,
+                amount_ars_cents: 1500000,
             })
         );
         expect(mocks.createSwap).not.toHaveBeenCalled();
-        expect(mocks.push).toHaveBeenCalledWith(`/swaps?id=${SWAP_ID}`, undefined, {
+        expect(mocks.createArsSwap).not.toHaveBeenCalled();
+        expect(mocks.getSwapQuote).not.toHaveBeenCalled();
+        expect(mocks.requestDirectFiatFunding).toHaveBeenCalledWith(PURCHASE.tentative_id);
+        expect(mocks.push).toHaveBeenCalledWith(`/swaps?tentative=${PURCHASE.tentative_id}`, undefined, {
             shallow: true,
         });
         // The amount to transfer is the one from the order, cents included.
-        expect(await screen.findByText("wapu.fiwind.alias")).toBeInTheDocument();
+        expect(await screen.findByText("test.receiver.alias")).toBeInTheDocument();
         expect(screen.getAllByText("15.000,37 ARS").length).toBeGreaterThan(0);
         expect(screen.getByText(/incluyendo los centavos/)).toBeInTheDocument();
+    });
+
+    it.each([
+        ["BTC", "SAT", "BITCOIN", "bc1qtestdestination000000000000000000000000"],
+        ["LBTC", "LBTC", "LIQUID", "lq1testdestination000000000000000000000000"],
+        ["USDT_LIQUID", "USDT", "LIQUID", "lq1testdestination000000000000000000000000"],
+        ["USDT_ETHEREUM", "USDT", "ETHEREUM", "0x" + "a".repeat(40)],
+        ["USDT_POLYGON", "USDT", "POLYGON", "0x" + "b".repeat(40)],
+    ])("creates and funds ARS -> %s using purchase units", async (target, currency, network, address) => {
+        logIn();
+        const user = userEvent.setup();
+        const quote = { ...PURCHASE_QUOTE, payout_currency: currency, payout_network: network,
+            amount_out: currency === "USDT" ? 9875 : 197974,
+            amount_out_unit: currency === "USDT" ? "usdt_cents" : "sats" };
+        mocks.getCryptoPurchaseQuote.mockResolvedValue({ data: quote, status: 200 });
+        mocks.createCryptoPurchaseTentative.mockResolvedValue({ data: { ...PURCHASE, ...quote }, status: 201 });
+        mocks.requestDirectFiatFunding.mockResolvedValue({ data: { ...FUNDED_PURCHASE, ...quote }, status: 201 });
+        mocks.getDirectFiatTentative.mockResolvedValue({ data: { ...FUNDED_PURCHASE, ...quote }, status: 200 });
+        renderWithTamagui(<SwapsPage />);
+        await screen.findByRole("button", { name: "Cerrar" });
+        await user.selectOptions(screen.getByLabelText("select Vos enviás"), "ARS");
+        await user.selectOptions(screen.getByLabelText("select Recibís"), target);
+        await user.type(screen.getByLabelText("Monto a recibir"), currency === "USDT" ? "98.75" : "0.00197974");
+        await continueToPhase2(user);
+        expect(mocks.getCryptoPurchaseQuote).toHaveBeenLastCalledWith({
+            payout_currency: currency, payout_network: network, amount_out: quote.amount_out,
+        });
+        await user.type(screen.getByLabelText(/Dirección de destino/), address);
+        await user.click(screen.getByRole("button", { name: "Crear orden" }));
+        await waitFor(() => expect(mocks.requestDirectFiatFunding).toHaveBeenCalledWith(PURCHASE.tentative_id));
+        expect(mocks.createCryptoPurchaseTentative).toHaveBeenCalledWith({
+            payout_currency: currency, payout_network: network, amount_out: quote.amount_out, payout_address: address,
+        });
+        expect(mocks.createArsSwap).not.toHaveBeenCalled();
+        expect(mocks.createSwap).not.toHaveBeenCalled();
+        expect(mocks.getSwap).not.toHaveBeenCalled();
+    });
+
+    it("retains a created purchase when funding fails and retries without recreating", async () => {
+        logIn();
+        const user = userEvent.setup();
+        mocks.getCryptoPurchaseQuote.mockResolvedValue({ data: PURCHASE_QUOTE, status: 200 });
+        mocks.createCryptoPurchaseTentative.mockResolvedValue({ data: PURCHASE, status: 201 });
+        mocks.requestDirectFiatFunding.mockResolvedValueOnce({ data: { error: "Try funding again" }, status: 409 })
+            .mockResolvedValue({ data: FUNDED_PURCHASE, status: 201 });
+        mocks.getDirectFiatTentative.mockResolvedValue({ data: PURCHASE, status: 200 });
+        renderWithTamagui(<SwapsPage />);
+        await reachArsBuyAddress(user);
+        await user.click(screen.getByRole("button", { name: "Crear orden" }));
+        const retry = await screen.findByRole("button", { name: "Generar las instrucciones de nuevo" });
+        expect(mocks.push).toHaveBeenCalledWith(`/swaps?tentative=${PURCHASE.tentative_id}`, undefined, { shallow: true });
+        await user.click(retry);
+        expect(await screen.findByText("test.receiver.alias")).toBeInTheDocument();
+        expect(mocks.createCryptoPurchaseTentative).toHaveBeenCalledTimes(1);
+        expect(mocks.requestDirectFiatFunding).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not fund a restored purchase after logout", async () => {
+        mocks.query = { tentative: PURCHASE.tentative_id };
+        mocks.getDirectFiatTentative.mockResolvedValue({ data: PURCHASE, status: 200 });
+        const user = userEvent.setup();
+        renderWithTamagui(<SwapsPage />);
+        await user.click(await screen.findByRole("button", { name: "Generar las instrucciones de nuevo" }));
+        expect(mocks.requestDirectFiatFunding).not.toHaveBeenCalled();
+        expect(await screen.findByText("Iniciá sesión para operar con pesos.")).toBeInTheDocument();
     });
 
     it("shows a paid-but-failed purchase as under review, with the order id", async () => {
@@ -478,18 +551,21 @@ describe("SwapsPage — ARS legs", () => {
     it("sends amount_out, not amount_ars, when the user pinned what to receive", async () => {
         logIn();
         const user = userEvent.setup();
-        mocks.getSwapQuote.mockResolvedValue({ data: ARS_QUOTE, status: 200 });
-        mocks.createArsSwap.mockResolvedValue({ data: ARS_SWAP, status: 201 });
-        mocks.getSwap.mockResolvedValue({ data: ARS_SWAP, status: 200 });
+        mocks.getCryptoPurchaseQuote.mockResolvedValue({ data: PURCHASE_QUOTE, status: 200 });
+        mocks.createCryptoPurchaseTentative.mockResolvedValue({ data: PURCHASE, status: 201 });
+        mocks.requestDirectFiatFunding.mockResolvedValue({ data: FUNDED_PURCHASE, status: 201 });
+        mocks.getDirectFiatTentative.mockResolvedValue({ data: FUNDED_PURCHASE, status: 200 });
         renderWithTamagui(<SwapsPage />);
 
         await reachArsBuyAddress(user, "out");
-        expect(mocks.getSwapQuote).toHaveBeenLastCalledWith("ARS", "BTC_LIGHTNING", 10000, "out");
+        expect(mocks.getCryptoPurchaseQuote).toHaveBeenLastCalledWith({
+            payout_currency: "SAT", payout_network: "LIGHTNING", amount_out: 10000
+        });
         await user.click(screen.getByRole("button", { name: "Crear orden" }));
 
         await waitFor(() =>
-            expect(mocks.createArsSwap).toHaveBeenCalledWith({
-                to_asset: "BTC_LIGHTNING",
+            expect(mocks.createCryptoPurchaseTentative).toHaveBeenCalledWith({
+                payout_currency: "SAT", payout_network: "LIGHTNING",
                 payout_address: "satoshi@walletofsatoshi.com",
                 amount_out: 10000,
             })
@@ -499,7 +575,7 @@ describe("SwapsPage — ARS legs", () => {
     it("shows the backend error when the ARS quote answers 400", async () => {
         logIn();
         const user = userEvent.setup();
-        mocks.getSwapQuote.mockResolvedValue({
+        mocks.getCryptoPurchaseQuote.mockResolvedValue({
             data: { error: "ARS swaps are disabled" },
             status: 400,
         });
@@ -523,11 +599,11 @@ describe("SwapsPage — ARS legs", () => {
         [409, {}, "No hay liquidez para el monto solicitado."],
         [422, { error: "Monthly ARS purchase limit exceeded" }, "Monthly ARS purchase limit exceeded"],
         [429, { error: "Too many requests" }, "Demasiados intentos. Esperá un momento e intentá de nuevo."],
-    ])("maps a %s from POST /swaps/ars to its message", async (status, data, message) => {
+    ])("maps a %s from purchase creation to its message", async (status, data, message) => {
         logIn();
         const user = userEvent.setup();
-        mocks.getSwapQuote.mockResolvedValue({ data: ARS_QUOTE, status: 200 });
-        mocks.createArsSwap.mockResolvedValue({ data, status });
+        mocks.getCryptoPurchaseQuote.mockResolvedValue({ data: PURCHASE_QUOTE, status: 200 });
+        mocks.createCryptoPurchaseTentative.mockResolvedValue({ data, status });
         renderWithTamagui(<SwapsPage />);
 
         await reachArsBuyAddress(user);
@@ -642,6 +718,23 @@ describe("SwapsPage — ARS polling", () => {
         await tick(0);
         await tick(20000);
         expect(mocks.getSwap).toHaveBeenCalledTimes(3);
+    });
+
+    it("keeps an expired direct-fiat purchase polling through an outage until watch_pending clears", async () => {
+        mocks.query = { tentative: PURCHASE.tentative_id };
+        const expired = { ...FUNDED_PURCHASE, status: "EXPIRED", watch_pending: true,
+            late_watch_until: new Date(NOW - 7200000).toISOString() };
+        mocks.getDirectFiatTentative.mockResolvedValue({ data: expired, status: 200 });
+        renderWithTamagui(<SwapsPage />);
+        await tick(0);
+        await tick(20000);
+        expect(mocks.getDirectFiatTentative).toHaveBeenCalledTimes(3);
+        expect(screen.queryByRole("button", { name: "Iniciar otra operación" })).not.toBeInTheDocument();
+        mocks.getDirectFiatTentative.mockResolvedValue({ data: { ...expired, watch_pending: false }, status: 200 });
+        await tick(10000);
+        await tick(30000);
+        expect(mocks.getDirectFiatTentative).toHaveBeenCalledTimes(4);
+        expect(screen.getByRole("button", { name: "Iniciar otra operación" })).toBeInTheDocument();
     });
 
     it("stops polling a tentative on 401 instead of refreshing every tick", async () => {

@@ -31,6 +31,8 @@ const STEP_INDEX = {
     REFUNDING: 2,
     REFUNDED: 3,
     FAILED: 2,
+    // Direct-fiat purchase credited to the Wapu balance: paid, never sent.
+    SETTLED_TO_BALANCE: 1,
 };
 
 const FAILURE_STATUSES = ["EXPIRED", "REFUNDING", "REFUNDED", "FAILED"];

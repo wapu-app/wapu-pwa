@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
     arsCentsToPlain,
     assetOfFunding,
+    assetOfPurchase,
+    baseUnitsToPurchaseAmount,
+    purchaseAmountToBaseUnits,
+    purchaseTargetOf,
     convertUnitText,
     directFiatDepositBaseUnits,
     flowOf,
@@ -292,6 +296,7 @@ describe("swaps primitives — pair matrix and login gate", () => {
         expect(values(receiveOptions("ARS", true))).toEqual([
             "BTC_LIGHTNING",
             "BTC",
+            "LBTC",
             "USDT_LIQUID",
             "USDT_ETHEREUM",
             "USDT_POLYGON",
@@ -391,5 +396,33 @@ describe("swaps primitives — parseBelowMinimum", () => {
         expect(parseBelowMinimum("amount too small for this pair")).toBeNull();
         expect(parseBelowMinimum("amount below minimum (10 base units of DOGE)")).toBeNull();
         expect(parseBelowMinimum(undefined)).toBeNull();
+    });
+});
+
+
+describe("direct-fiat purchase targets", () => {
+    it("supports all authenticated ARS purchase targets", () => {
+        expect(receiveOptions("ARS", true).map(option => option.value).sort()).toEqual(
+            ["BTC", "BTC_LIGHTNING", "LBTC", "USDT_ETHEREUM", "USDT_LIQUID", "USDT_POLYGON"].sort()
+        );
+        expect(isSupportedPair("ARS", "LBTC", false)).toBe(false);
+    });
+});
+
+describe("direct-fiat purchase units", () => {
+    it("maps each target to its payout pair and back", () => {
+        expect(purchaseTargetOf("BTC_LIGHTNING")).toEqual({ payout_currency: "SAT", payout_network: "LIGHTNING" });
+        expect(assetOfPurchase("SAT", "BITCOIN")).toBe("BTC");
+        expect(assetOfPurchase("LBTC", "LIQUID")).toBe("LBTC");
+        expect(assetOfPurchase("USDT", "POLYGON")).toBe("USDT_POLYGON");
+        expect(assetOfPurchase("USDT", "TRON")).toBeNull();
+    });
+
+    it("converts USDT cents to chain base units and keeps sats as they are", () => {
+        expect(purchaseAmountToBaseUnits(9875, "USDT_POLYGON")).toBe(98750000);
+        expect(purchaseAmountToBaseUnits(9875, "USDT_LIQUID")).toBe(9875000000);
+        expect(purchaseAmountToBaseUnits(197974, "BTC_LIGHTNING")).toBe(197974);
+        expect(baseUnitsToPurchaseAmount(98759999, "USDT_ETHEREUM")).toBe(9875);
+        expect(baseUnitsToPurchaseAmount(197974, "LBTC")).toBe(197974);
     });
 });

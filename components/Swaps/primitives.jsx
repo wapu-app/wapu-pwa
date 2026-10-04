@@ -113,15 +113,15 @@ export const assetOf = (code) => ASSETS[code] || null;
 const CRYPTO_SWAP_CODES = ["BTC", "LBTC", "USDT_LIQUID", "USDT_ETHEREUM", "USDT_POLYGON"];
 // "You send" never offers the EVM USDT legs.
 const SEND_CODES = ["BTC", "LBTC", "USDT_LIQUID", "BTC_LIGHTNING", "ARS"];
-// ARS in -> crypto out, through POST /swaps/ars.
-const ARS_BUY_TARGETS = ["BTC_LIGHTNING", "BTC", "USDT_LIQUID", "USDT_ETHEREUM", "USDT_POLYGON"];
+// ARS in -> crypto out, through direct-fiat `crypto_purchase` tentatives.
+const ARS_BUY_TARGETS = ["BTC_LIGHTNING", "BTC", "LBTC", "USDT_LIQUID", "USDT_ETHEREUM", "USDT_POLYGON"];
 // Crypto in -> ARS out, through the existing direct-fiat tentatives.
 const ARS_SELL_SOURCES = ["BTC_LIGHTNING", "LBTC", "USDT_LIQUID"];
 // Legs that exist only behind a session: ARS, and BTC_LIGHTNING as an input
 // (its only pair, BTC_LIGHTNING -> ARS, needs a session).
 const AUTH_ONLY_SEND = ["ARS", "BTC_LIGHTNING"];
 
-// Which flow a pair runs through: "arsBuy" (swap with an ARS leg),
+// Which flow a pair runs through: "arsBuy" (direct-fiat purchase),
 // "arsSell" (direct-fiat payment) or "swap" (crypto <-> crypto).
 export function flowOf(from, to) {
     if (from === "ARS") {
@@ -252,6 +252,48 @@ export function assetOfFunding(fundingCurrency, fundingNetwork) {
     }
     return null;
 }
+
+// ARS purchase targets as the direct-fiat `crypto_purchase` API names them.
+// The bitcoin legs share payout_currency "SAT" (amounts in sats); USDT
+// amounts are USDT cents, whatever the chain's own decimals.
+const PURCHASE_TARGETS = {
+    BTC: { payout_currency: "SAT", payout_network: "BITCOIN" },
+    BTC_LIGHTNING: { payout_currency: "SAT", payout_network: "LIGHTNING" },
+    LBTC: { payout_currency: "LBTC", payout_network: "LIQUID" },
+    USDT_LIQUID: { payout_currency: "USDT", payout_network: "LIQUID" },
+    USDT_ETHEREUM: { payout_currency: "USDT", payout_network: "ETHEREUM" },
+    USDT_POLYGON: { payout_currency: "USDT", payout_network: "POLYGON" },
+};
+
+export const purchaseTargetOf = (code) => PURCHASE_TARGETS[code] || null;
+
+export function assetOfPurchase(payoutCurrency, payoutNetwork) {
+    return (
+        Object.keys(PURCHASE_TARGETS).find(
+            (code) =>
+                PURCHASE_TARGETS[code].payout_currency === payoutCurrency &&
+                PURCHASE_TARGETS[code].payout_network === payoutNetwork
+        ) || null
+    );
+}
+
+// The page keeps amounts in the asset's base units; the purchase API speaks
+// sats (same thing for the bitcoin legs) or USDT cents. These convert between both.
+const purchaseScale = (code) => {
+    const asset = assetOf(code);
+    return asset && asset.symbol === "USDT" ? 10 ** (asset.decimals - 2) : 1;
+};
+
+export function purchaseAmountToBaseUnits(amount, code) {
+    const numeric = Number(amount);
+    if (amount === null || amount === undefined || !Number.isFinite(numeric)) {
+        return null;
+    }
+    return numeric * purchaseScale(code);
+}
+
+export const baseUnitsToPurchaseAmount = (baseUnits, code) =>
+    Math.floor(baseUnits / purchaseScale(code));
 
 // What the user must deposit for a direct-fiat quote or tentative, in the
 // asset's base units. Sats rails carry `total_amount_sats`; USDT carries

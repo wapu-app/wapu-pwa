@@ -156,6 +156,7 @@ export const TRANSLATIONS = {
             title: "Transferí los pesos",
             orderId: "ID de la orden",
             alias: "Alias de destino",
+            cvu: "CVU de destino",
             amount: "Monto exacto a transferir",
             exactWarning:
                 "Es importante que el pago sea exacto, incluyendo los centavos, o no será detectado.",
@@ -175,6 +176,8 @@ export const TRANSLATIONS = {
                 COMPLETED: "Completado",
                 EXPIRED: "Expirada",
                 FAILED: "Fallida",
+                CREATED: "Preparando las instrucciones",
+                SETTLED_TO_BALANCE: "Acreditado en tu saldo Wapu",
             },
             sendingNotice: "Recibimos tu pago. Estamos enviando tus fondos.",
             completedNotice: "¡Listo! Enviamos tus fondos.",
@@ -184,6 +187,10 @@ export const TRANSLATIONS = {
             expiredNotice:
                 "La orden expiró. Si ya transferiste, contactanos con el ID de la orden.",
             failedNotice: "La orden falló. Contactanos con el ID de la orden.",
+            expiredWatchingNotice:
+                "La orden expiró. Si ya transferiste, seguimos buscando tu pago.",
+            settledNotice:
+                "Recibimos tu pago pero no pudimos enviar las cripto: el monto quedó acreditado en tu saldo Wapu.",
             newOrder: "Iniciar otra operación",
         },
 
@@ -363,6 +370,7 @@ export const TRANSLATIONS = {
             title: "Transfer the pesos",
             orderId: "Order ID",
             alias: "Destination alias",
+            cvu: "Destination CVU",
             amount: "Exact amount to transfer",
             exactWarning:
                 "It is important that the payment is exact, including the cents, or it will not be detected.",
@@ -382,6 +390,8 @@ export const TRANSLATIONS = {
                 COMPLETED: "Completed",
                 EXPIRED: "Expired",
                 FAILED: "Failed",
+                CREATED: "Preparing the instructions",
+                SETTLED_TO_BALANCE: "Credited to your Wapu balance",
             },
             sendingNotice: "We received your payment. We are sending your funds.",
             completedNotice: "Done! We sent your funds.",
@@ -391,6 +401,10 @@ export const TRANSLATIONS = {
             expiredNotice:
                 "The order expired. If you already transferred, contact us with the order ID.",
             failedNotice: "The order failed. Contact us with the order ID.",
+            expiredWatchingNotice:
+                "The order expired. If you already transferred, we are still looking for your payment.",
+            settledNotice:
+                "We received your payment but could not send the crypto: the amount was credited to your Wapu balance.",
             newOrder: "Start another operation",
         },
 

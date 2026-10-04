@@ -10,12 +10,47 @@ import {
     ErrorText,
     GhostButton,
     Overline,
+    PrimaryButton,
+    assetOfPurchase,
     formatArsCents,
     formatAssetAmount,
     mono,
+    purchaseAmountToBaseUnits,
     sans,
     shortenHash,
 } from "./primitives";
+
+// A direct-fiat tentative is a purchase (ramp-on) by its type/direction, never
+// because it merely has a tentative id: crypto -> ARS sales are tentatives too.
+export const isPurchaseTentative = (tentative) =>
+    Boolean(tentative) &&
+    (tentative.type === "crypto_purchase" || tentative.direction === "ramp_on");
+
+// Direct-fiat statuses that read as a swap status on the purchase stepper.
+const PURCHASE_STATUS = { FUNDING_ISSUED: "WAITING_DEPOSIT", EXECUTED: "SENDING" };
+
+// Maps a `crypto_purchase` tentative onto the swap-shaped order this component
+// and ArsPaymentInstructions render. `amount_ars_cents` is read after funding:
+// the backend may bump it a few cents to make the transfer unique.
+export function purchaseOrderOf(tentative) {
+    const to = assetOfPurchase(tentative.payout_currency, tentative.payout_network);
+    return {
+        swap_id: tentative.tentative_id,
+        status: PURCHASE_STATUS[tentative.status] || tentative.status,
+        from: "ARS",
+        to,
+        amount_in_expected: tentative.amount_ars_cents,
+        amount_out_quoted: purchaseAmountToBaseUnits(tentative.amount_out, to),
+        amount_out_final: null,
+        deposit_address: tentative.alias || null,
+        cvu: tentative.cvu || null,
+        payout_txid: tentative.txid || null,
+        payout_payment_hash: tentative.payment_hash || null,
+        expires_at: tentative.expires_at,
+        error_code: tentative.payout_status === "review" ? "under_review" : tentative.error_code || null,
+        watch_pending: Boolean(tentative.watch_pending),
+    };
+}
 
 // "Under review", not a failure: the user already paid and an operator reviews it.
 // Signalled by `error_code: "under_review"`, or FAILED with a detected deposit.
@@ -35,7 +70,10 @@ function noticeFor(t, swap) {
         case "COMPLETED":
             return t.arsPayment.completedNotice;
         case "EXPIRED":
-            return t.arsPayment.expiredNotice;
+            return swap.watch_pending ? t.arsPayment.expiredWatchingNotice : t.arsPayment.expiredNotice;
+        // Paid in ARS but no crypto went out: never worded as a delivery.
+        case "SETTLED_TO_BALANCE":
+            return t.arsPayment.settledNotice;
         case "FAILED":
             return t.arsPayment.failedNotice;
         default:
@@ -43,9 +81,21 @@ function noticeFor(t, swap) {
     }
 }
 
-// Phase 3 of an ARS -> crypto purchase (a swap whose `from` is ARS). Polling
-// lives in pages/swaps; this component only renders the swap it is given.
-export default function PurchaseStatus({ t, lang, swap, btcUnit, errorText, showNewSwap, onNewSwap }) {
+// Phase 3 of an ARS -> crypto purchase: a legacy swap whose `from` is ARS, or a
+// direct-fiat purchase through purchaseOrderOf. Polling lives in pages/swaps;
+// this component only renders the order it is given. A purchase still in
+// CREATED has no bank instructions yet: `onRetryFunding` issues them again.
+export default function PurchaseStatus({
+    t,
+    lang,
+    swap,
+    btcUnit,
+    errorText,
+    showNewSwap,
+    onNewSwap,
+    onRetryFunding,
+    retrying,
+}) {
     const isWaiting = swap.status === "WAITING_DEPOSIT";
     const countdown = useCountdown(swap.expires_at, isWaiting);
     const underReview = isUnderReview(swap);
@@ -96,6 +146,12 @@ export default function PurchaseStatus({ t, lang, swap, btcUnit, errorText, show
 
             {isWaiting ? (
                 <ArsPaymentInstructions t={t} lang={lang} swap={swap} countdown={countdown} />
+            ) : null}
+
+            {swap.status === "CREATED" && onRetryFunding ? (
+                <PrimaryButton onPress={onRetryFunding} disabled={retrying}>
+                    {t.fiatPayout.retry}
+                </PrimaryButton>
             ) : null}
 
             <YStack
