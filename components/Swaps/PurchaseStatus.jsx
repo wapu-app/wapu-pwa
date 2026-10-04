@@ -166,10 +166,13 @@ export default function PurchaseStatus({
                     label={t.quote.youSend}
                     value={`${formatArsCents(swap.amount_in_expected, lang)} ARS`}
                 />
-                <BreakdownRow
-                    label={t.status.youReceive}
-                    value={formatAssetAmount(amountOut, swap.to, { btcUnit, network: true })}
-                />
+                {/* Settled to balance: no crypto went out, so no crypto amount either. */}
+                {swap.status !== "SETTLED_TO_BALANCE" ? (
+                    <BreakdownRow
+                        label={t.status.youReceive}
+                        value={formatAssetAmount(amountOut, swap.to, { btcUnit, network: true })}
+                    />
+                ) : null}
                 {swap.deposit_txid ? (
                     <TxidRow
                         t={t}

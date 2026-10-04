@@ -106,6 +106,15 @@ describe("PurchaseStatus — direct-fiat purchases", () => {
         expect(screen.queryByText("test.receiver.alias")).not.toBeInTheDocument();
     });
 
+    it("does not show the quoted crypto amount once settled to balance", () => {
+        renderPurchase({
+            ...FUNDED_PURCHASE,
+            status: "SETTLED_TO_BALANCE",
+            payout_status: "settled_to_balance",
+        });
+        expect(screen.queryByText(t.status.youReceive)).not.toBeInTheDocument();
+    });
+
     it("says an expired purchase is still being watched while watch_pending", () => {
         renderPurchase({ ...FUNDED_PURCHASE, status: "EXPIRED", watch_pending: true });
         expect(screen.getByText(t.arsPayment.expiredWatchingNotice)).toBeInTheDocument();

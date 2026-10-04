@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PURCHASE_QUOTE, PURCHASE, FUNDED_PURCHASE } from "../../fixtures/crypto-purchase";
 
 import SwapsPage from "../../../pages/swaps";
+import { TRANSLATIONS } from "../../../components/Swaps/i18n";
 import { renderWithTamagui } from "../../test-utils";
 
 // ARS legs of /swaps: login gate, close button, ARS purchase (direct-fiat
@@ -14,7 +15,6 @@ import { renderWithTamagui } from "../../test-utils";
 // { value, onChange, options, label } contract.
 
 const mocks = vi.hoisted(() => ({
-    createArsSwap: vi.fn(),
     createCryptoPurchaseTentative: vi.fn(),
     getCryptoPurchaseQuote: vi.fn(),
     createDirectFiatTentative: vi.fn(),
@@ -78,7 +78,6 @@ vi.mock("../../../components/CalcSelect", async () => {
 vi.mock("../../../api/api", () => ({
     createCryptoPurchaseTentative: (body) => mocks.createCryptoPurchaseTentative(body),
     getCryptoPurchaseQuote: (params) => mocks.getCryptoPurchaseQuote(params),
-    createArsSwap: (body) => mocks.createArsSwap(body),
     createDirectFiatTentative: (body) => mocks.createDirectFiatTentative(body),
     createSwap: (body) => mocks.createSwap(body),
     getDirectFiatQuote: (args) => mocks.getDirectFiatQuote(args),
@@ -297,7 +296,6 @@ describe("SwapsPage — ARS legs", () => {
             })
         );
         expect(mocks.createSwap).not.toHaveBeenCalled();
-        expect(mocks.createArsSwap).not.toHaveBeenCalled();
         expect(mocks.getSwapQuote).not.toHaveBeenCalled();
         expect(mocks.requestDirectFiatFunding).toHaveBeenCalledWith(PURCHASE.tentative_id);
         expect(mocks.push).toHaveBeenCalledWith(`/swaps?tentative=${PURCHASE.tentative_id}`, undefined, {
@@ -340,7 +338,6 @@ describe("SwapsPage — ARS legs", () => {
         expect(mocks.createCryptoPurchaseTentative).toHaveBeenCalledWith({
             payout_currency: currency, payout_network: network, amount_out: quote.amount_out, payout_address: address,
         });
-        expect(mocks.createArsSwap).not.toHaveBeenCalled();
         expect(mocks.createSwap).not.toHaveBeenCalled();
         expect(mocks.getSwap).not.toHaveBeenCalled();
     });
@@ -358,11 +355,42 @@ describe("SwapsPage — ARS legs", () => {
         await user.click(screen.getByRole("button", { name: "Crear orden" }));
         const retry = await screen.findByRole("button", { name: "Generar las instrucciones de nuevo" });
         expect(mocks.push).toHaveBeenCalledWith(`/swaps?tentative=${PURCHASE.tentative_id}`, undefined, { shallow: true });
+        // The first poll answers 200 CREATED: it must not wipe the funding error.
+        await waitFor(() => expect(mocks.getDirectFiatTentative).toHaveBeenCalled());
+        await act(async () => {});
+        expect(screen.getByText("Try funding again")).toBeInTheDocument();
         await user.click(retry);
         expect(await screen.findByText("test.receiver.alias")).toBeInTheDocument();
         expect(mocks.createCryptoPurchaseTentative).toHaveBeenCalledTimes(1);
         expect(mocks.requestDirectFiatFunding).toHaveBeenCalledTimes(2);
     });
+
+    it("shows a loader, neither the sale nor the purchase view, before the first GET", async () => {
+        mocks.query = { tentative: PURCHASE.tentative_id };
+        mocks.getDirectFiatTentative.mockReturnValue(new Promise(() => {}));
+        renderWithTamagui(<SwapsPage />);
+        expect(await screen.findByText(TRANSLATIONS.es.status.loading)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Iniciar otra operación" })).not.toBeInTheDocument();
+        expect(screen.queryByText(TRANSLATIONS.es.status.notFound)).not.toBeInTheDocument();
+    });
+
+    it.each(["10.005", "0.001"])(
+        "rejects a sub-cent USDT amount to receive (%s) instead of flooring it",
+        async (typed) => {
+            logIn();
+            const user = userEvent.setup();
+            renderWithTamagui(<SwapsPage />);
+            await screen.findByRole("button", { name: "Cerrar" });
+            await user.selectOptions(screen.getByLabelText("select Vos enviás"), "ARS");
+            await user.selectOptions(screen.getByLabelText("select Recibís"), "USDT_POLYGON");
+            await user.type(screen.getByLabelText("Monto a recibir"), typed);
+            expect(await screen.findByText("El monto no es válido.")).toBeInTheDocument();
+            await act(async () => {
+                await new Promise((resolve) => setTimeout(resolve, 600));
+            });
+            expect(mocks.getCryptoPurchaseQuote).not.toHaveBeenCalled();
+        }
+    );
 
     it("does not fund a restored purchase after logout", async () => {
         mocks.query = { tentative: PURCHASE.tentative_id };

@@ -19,7 +19,9 @@ import SwapStatus, { TERMINAL_STATUSES } from "../../components/Swaps/SwapStatus
 import { SUPPORTED_LANGS, useSwapsLang } from "../../components/Swaps/i18n";
 import {
     BrandGlow,
+    Card,
     DEFAULT_BTC_UNIT,
+    GhostButton,
     Overline,
     arsCentsToPlain,
     baseUnitsToPurchaseAmount,
@@ -240,8 +242,9 @@ export default function SwapsPage() {
     const [receiverName, setReceiverName] = useState("");
     const [tentativeId, setTentativeId] = useState(null);
     const [tentative, setTentative] = useState(null);
-    const [tentativeLoading, setTentativeLoading] = useState(false);
     const [tentativeError, setTentativeError] = useState(null);
+    // Kept apart from tentativeError: a poll answering 200 CREATED must not wipe it.
+    const [fundingError, setFundingError] = useState(null);
     const [retryingFunding, setRetryingFunding] = useState(false);
     const [tentativePollStopped, setTentativePollStopped] = useState(false);
 
@@ -306,6 +309,19 @@ export default function SwapsPage() {
         if (!pinnedAmount || pinnedAmount <= 0) {
             setQuote(null);
             setQuoteError(null);
+            setQuoteLoading(false);
+            clearMirroredAmount();
+            return undefined;
+        }
+        // Purchases speak whole sats / USDT cents: a sub-cent USDT amount is
+        // rejected, never floored (10.005 -> 10.00, 0.001 -> 0).
+        if (
+            flowOf(from, to) === "arsBuy" &&
+            side === "out" &&
+            purchaseAmountToBaseUnits(baseUnitsToPurchaseAmount(pinnedAmount, to), to) !== pinnedAmount
+        ) {
+            setQuote(null);
+            setQuoteError({ key: "invalidAmount" });
             setQuoteLoading(false);
             clearMirroredAmount();
             return undefined;
@@ -451,8 +467,6 @@ export default function SwapsPage() {
         Boolean(tentative) &&
         TENTATIVE_TERMINAL_STATUSES.includes(tentative.status) &&
         !tentative.watch_pending;
-    const tentativeRef = useRef(null);
-    tentativeRef.current = tentative;
     useEffect(() => {
         if (!tentativeId || isTentativeTerminal || tentativePollStopped) {
             return undefined;
@@ -460,9 +474,6 @@ export default function SwapsPage() {
         let cancelled = false;
 
         const fetchTentative = async () => {
-            if (!tentativeRef.current) {
-                setTentativeLoading(true);
-            }
             try {
                 const { data, status } = await getDirectFiatTentative(tentativeId);
                 if (cancelled) {
@@ -471,6 +482,9 @@ export default function SwapsPage() {
                 if (status === 200 && data && data.tentative_id) {
                     setTentative(data);
                     setTentativeError(null);
+                    if (data.status !== "CREATED") {
+                        setFundingError(null);
+                    }
                 } else if (status === 404 || status === 401) {
                     setTentativeError({ key: status === 404 ? "notFound" : "authRequired" });
                     setTentativePollStopped(true);
@@ -482,10 +496,6 @@ export default function SwapsPage() {
             } catch {
                 if (!cancelled) {
                     setTentativeError({ key: "network" });
-                }
-            } finally {
-                if (!cancelled) {
-                    setTentativeLoading(false);
                 }
             }
         };
@@ -618,12 +628,12 @@ export default function SwapsPage() {
             const { data, status } = await requestDirectFiatFunding(id);
             if (status === 201 && data && data.tentative_id) {
                 setTentative(data);
-                setTentativeError(null);
+                setFundingError(null);
                 return;
             }
-            setTentativeError(errorOf(status, data, "fundingFailed"));
+            setFundingError(errorOf(status, data, "fundingFailed"));
         } catch {
-            setTentativeError({ key: "network" });
+            setFundingError({ key: "network" });
         }
     };
 
@@ -633,7 +643,7 @@ export default function SwapsPage() {
         }
         // Buying with pesos needs a session; never fund a purchase anonymously.
         if (isPurchaseTentative(tentative) && !loggedIn) {
-            setTentativeError({ key: "authRequired" });
+            setFundingError({ key: "authRequired" });
             return;
         }
         setRetryingFunding(true);
@@ -737,6 +747,7 @@ export default function SwapsPage() {
         setTentativeId(null);
         setTentative(null);
         setTentativeError(null);
+        setFundingError(null);
         setTentativePollStopped(false);
         setSwapPollStopped(false);
         setAmount("");
@@ -912,7 +923,7 @@ export default function SwapsPage() {
                                 lang={lang}
                                 btcUnit={btcUnit}
                                 swap={purchaseOrderOf(tentative)}
-                                errorText={translateError(tentativeError)}
+                                errorText={translateError(fundingError || tentativeError)}
                                 onRetryFunding={handleRetryFunding}
                                 retrying={retryingFunding}
                                 showNewSwap={isTentativeTerminal}
@@ -920,14 +931,25 @@ export default function SwapsPage() {
                             />
                         ) : null}
 
-                        {phase === 3 && tentativeId && !isPurchaseTentative(tentative) ? (
+                        {/* Restored from ?tentative=: neither view until the first GET says which. */}
+                        {phase === 3 && tentativeId && !tentative ? (
+                            <Card>
+                                <Paragraph color={"$neutral11"} style={sans(13)}>
+                                    {tentativeError ? translateError(tentativeError) : t.status.loading}
+                                </Paragraph>
+                                {tentativeError ? (
+                                    <GhostButton onPress={handleNewSwap}>{t.arsPayment.newOrder}</GhostButton>
+                                ) : null}
+                            </Card>
+                        ) : null}
+
+                        {phase === 3 && tentative && !isPurchaseTentative(tentative) ? (
                             <FiatPayoutStatus
                                 t={t}
                                 lang={lang}
                                 tentative={tentative}
                                 btcUnit={btcUnit}
-                                loading={tentativeLoading}
-                                errorText={translateError(tentativeError)}
+                                errorText={translateError(fundingError || tentativeError)}
                                 onRetryFunding={handleRetryFunding}
                                 retrying={retryingFunding}
                                 showNewSwap={isTentativeTerminal}
