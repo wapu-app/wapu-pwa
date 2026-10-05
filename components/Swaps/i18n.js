@@ -114,7 +114,8 @@ export const TRANSLATIONS = {
             createFailed: "No pudimos crear el swap.",
             network: "Error de red. Intentá de nuevo.",
             rateLimited: "Demasiados intentos. Esperá un momento e intentá de nuevo.",
-            noLiquidity:
+            noLiquidity: "No hay liquidez para el monto solicitado.",
+            purchaseNoLiquidity:
                 "No hay receptor ni liquidez disponible en este momento. Intentá de nuevo más tarde.",
             purchasesDisabled:
                 "Las compras de cripto no están disponibles para esta cuenta en este momento.",
@@ -334,7 +335,8 @@ export const TRANSLATIONS = {
             createFailed: "We could not create the swap.",
             network: "Network error. Please try again.",
             rateLimited: "Too many attempts. Wait a moment and try again.",
-            noLiquidity: "No receiver or liquidity is available right now. Try again later.",
+            noLiquidity: "No liquidity for the requested amount.",
+            purchaseNoLiquidity: "No receiver or liquidity is available right now. Try again later.",
             purchasesDisabled: "Crypto purchases are not available for this account right now.",
             notFound: "We could not find that swap.",
             authRequired: "Log in to trade with pesos.",

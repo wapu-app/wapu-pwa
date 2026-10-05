@@ -75,9 +75,28 @@ const DIRECT_FIAT_TYPE = "fast_fiat_transfer";
 // See docs/swaps-page.md.
 const ARS_LATE_WATCH_MS = 60 * 60 * 1000;
 
-// Status first: the backend always sends an English `error`, so it is only
-// the fallback for statuses without their own localized copy.
-const STATUS_ERROR_KEYS = { 401: "authRequired", 403: "purchasesDisabled", 409: "noLiquidity", 429: "rateLimited" };
+// ARS purchases (crypto_purchase) localize these statuses before the backend's
+// English `error`; sales and crypto swaps keep the backend text.
+const PURCHASE_ERROR_KEYS = { 403: "purchasesDisabled", 409: "purchaseNoLiquidity" };
+
+function errorOf(status, data, fallbackKey, purchase = false) {
+    if (status === 401) {
+        return { key: "authRequired" };
+    }
+    if (status === 429) {
+        return { key: "rateLimited" };
+    }
+    if (purchase && PURCHASE_ERROR_KEYS[status]) {
+        return { key: PURCHASE_ERROR_KEYS[status] };
+    }
+    if (data && data.error) {
+        return backendError(data.error);
+    }
+    if (status === 409) {
+        return { key: "noLiquidity" };
+    }
+    return { key: fallbackKey };
+}
 
 // A backend error message, reworded when it speaks in base units: the user
 // never reads "base units" on this page.
@@ -385,11 +404,13 @@ export default function SwapsPage() {
                     // live price, so it goes with the quote.
                     clearMirroredAmount();
                     setQuoteError(
-                        status === 401
-                            ? { key: "authRequired" }
-                            : data && data.error
-                              ? backendError(data.error)
-                              : { key: "quoteFailed" }
+                        isArsBuy
+                            ? errorOf(status, data, "quoteFailed", true)
+                            : status === 401
+                              ? { key: "authRequired" }
+                              : data && data.error
+                                ? backendError(data.error)
+                                : { key: "quoteFailed" }
                     );
                 }
             } catch {
@@ -611,18 +632,8 @@ export default function SwapsPage() {
         }
     };
 
-    const errorOf = (status, data, fallbackKey) => {
-        if (STATUS_ERROR_KEYS[status]) {
-            return { key: STATUS_ERROR_KEYS[status] };
-        }
-        if (data && data.error) {
-            return backendError(data.error);
-        }
-        return { key: fallbackKey };
-    };
-
     // Idempotent on the backend, so the status screen can retry it.
-    const issueFunding = async (id) => {
+    const issueFunding = async (id, purchase) => {
         try {
             const { data, status } = await requestDirectFiatFunding(id);
             if (status === 201 && data && data.tentative_id) {
@@ -630,7 +641,7 @@ export default function SwapsPage() {
                 setFundingError(null);
                 return;
             }
-            setFundingError(errorOf(status, data, "fundingFailed"));
+            setFundingError(errorOf(status, data, "fundingFailed", purchase));
         } catch {
             setFundingError({ key: "network" });
         }
@@ -646,7 +657,7 @@ export default function SwapsPage() {
             return;
         }
         setRetryingFunding(true);
-        await issueFunding(tentativeId);
+        await issueFunding(tentativeId, isPurchaseTentative(tentative));
         setTentativePollStopped(false);
         setRetryingFunding(false);
     };
@@ -656,13 +667,13 @@ export default function SwapsPage() {
     const handleCreateTentative = async (create) => {
         const { data, status } = await create();
         if (status !== 201 || !data || !data.tentative_id) {
-            setCreateError(errorOf(status, data, "createFailed"));
+            setCreateError(errorOf(status, data, "createFailed", flow === "arsBuy"));
             return;
         }
         // Funding first, then the status screen: starting the poll earlier
         // lets a stale CREATED read land after the 201 of /funding.
         setTentative(data);
-        await issueFunding(data.tentative_id);
+        await issueFunding(data.tentative_id, isPurchaseTentative(data));
         setTentativeId(data.tentative_id);
         setPhase(3);
         router.push(`/swaps?tentative=${data.tentative_id}`, undefined, { shallow: true });

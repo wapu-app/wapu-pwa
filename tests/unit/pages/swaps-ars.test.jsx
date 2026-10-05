@@ -547,6 +547,27 @@ describe("SwapsPage — ARS legs", () => {
         expect(screen.getAllByText("0.00021821 BTC · Lightning").length).toBeGreaterThan(0);
     });
 
+    it("keeps the backend text for a 403 on ARS sale creation", async () => {
+        logIn();
+        const user = userEvent.setup();
+        mocks.getDirectFiatQuote.mockResolvedValue({ data: FIAT_QUOTE, status: 200 });
+        mocks.createDirectFiatTentative.mockResolvedValue({ data: { error: "Sale backend says no" }, status: 403 });
+        renderWithTamagui(<SwapsPage />);
+
+        await screen.findByRole("button", { name: "Cerrar" });
+        await user.selectOptions(screen.getByLabelText("select Vos enviás"), "BTC_LIGHTNING");
+        const input = screen.getByLabelText("Monto a recibir");
+        await user.click(input);
+        await user.type(input, "25000");
+        await waitFor(() => expect(mocks.getDirectFiatQuote).toHaveBeenCalled(), { timeout: 3000 });
+        await continueToPhase2(user);
+        await user.type(screen.getByLabelText("Alias, CBU o CVU"), "my.bank.alias");
+        await user.click(screen.getByRole("button", { name: "Crear orden" }));
+
+        expect(await screen.findByText("Sale backend says no")).toBeInTheDocument();
+        expect(screen.queryByText(TRANSLATIONS.es.errors.purchasesDisabled)).not.toBeInTheDocument();
+    });
+
     it("offers to issue the deposit instructions again when /funding failed", async () => {
         const user = userEvent.setup();
         mocks.query = { tentative: TENTATIVE_ID };
@@ -600,6 +621,23 @@ describe("SwapsPage — ARS legs", () => {
         );
     });
 
+    it("localizes a 403 from the ARS purchase quote", async () => {
+        logIn();
+        const user = userEvent.setup();
+        mocks.getCryptoPurchaseQuote.mockResolvedValue({ data: { error: "Account is not active" }, status: 403 });
+        renderWithTamagui(<SwapsPage />);
+
+        await screen.findByRole("button", { name: "Cerrar" });
+        await user.selectOptions(screen.getByLabelText("select Vos enviás"), "ARS");
+        const input = screen.getByLabelText("Monto a enviar");
+        await user.click(input);
+        await user.type(input, "15000");
+
+        expect(
+            await screen.findByText(TRANSLATIONS.es.errors.purchasesDisabled, {}, { timeout: 3000 })
+        ).toBeInTheDocument();
+    });
+
     it("shows the backend error when the ARS quote answers 400", async () => {
         logIn();
         const user = userEvent.setup();
@@ -626,8 +664,8 @@ describe("SwapsPage — ARS legs", () => {
         [400, { error: "amount below minimum (1000000 base units of ARS)" }, /El monto mínimo es .*10\.000,00/],
         [401, { error: "Unauthorized" }, TRANSLATIONS.es.errors.authRequired],
         [403, { error: "Account is not active" }, TRANSLATIONS.es.errors.purchasesDisabled],
-        [409, { error: "No receiver available" }, TRANSLATIONS.es.errors.noLiquidity],
-        [409, {}, TRANSLATIONS.es.errors.noLiquidity],
+        [409, { error: "No receiver available" }, TRANSLATIONS.es.errors.purchaseNoLiquidity],
+        [409, {}, TRANSLATIONS.es.errors.purchaseNoLiquidity],
         [422, { error: "Monthly ARS purchase limit exceeded" }, "Monthly ARS purchase limit exceeded"],
         [429, { error: "Too many requests" }, TRANSLATIONS.es.errors.rateLimited],
     ])("maps a %s from purchase creation to its message", async (status, data, message) => {
@@ -646,7 +684,7 @@ describe("SwapsPage — ARS legs", () => {
 
     it.each([
         [403, TRANSLATIONS.es.errors.purchasesDisabled],
-        [409, TRANSLATIONS.es.errors.noLiquidity],
+        [409, TRANSLATIONS.es.errors.purchaseNoLiquidity],
     ])("localizes a %s from purchase funding even when the backend sends an error", async (status, message) => {
         logIn();
         const user = userEvent.setup();
