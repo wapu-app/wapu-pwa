@@ -32,11 +32,14 @@ const PURCHASE_STATUS = { FUNDING_ISSUED: "WAITING_DEPOSIT", EXECUTED: "SENDING"
 // Maps a `crypto_purchase` tentative onto the swap-shaped order this component
 // and ArsPaymentInstructions render. `amount_ars_cents` is read after funding:
 // the backend may bump it a few cents to make the transfer unique.
+// `payout_status: "expired"`: expired with no payment detected and its hold
+// released. Final, so never watched, retried, or read as delivered.
 export function purchaseOrderOf(tentative) {
     const to = assetOfPurchase(tentative.payout_currency, tentative.payout_network);
+    const expiredUnpaid = tentative.payout_status === "expired";
     return {
         swap_id: tentative.tentative_id,
-        status: PURCHASE_STATUS[tentative.status] || tentative.status,
+        status: expiredUnpaid ? "EXPIRED" : PURCHASE_STATUS[tentative.status] || tentative.status,
         from: "ARS",
         to,
         amount_in_expected: tentative.amount_ars_cents,
@@ -47,8 +50,12 @@ export function purchaseOrderOf(tentative) {
         payout_txid: tentative.txid || null,
         payout_payment_hash: tentative.payment_hash || null,
         expires_at: tentative.expires_at,
-        error_code: tentative.payout_status === "review" ? "under_review" : tentative.error_code || null,
-        watch_pending: Boolean(tentative.watch_pending),
+        error_code: expiredUnpaid
+            ? "expired_unpaid"
+            : tentative.payout_status === "review"
+              ? "under_review"
+              : tentative.error_code || null,
+        watch_pending: !expiredUnpaid && Boolean(tentative.watch_pending),
     };
 }
 
@@ -70,6 +77,9 @@ function noticeFor(t, swap) {
         case "COMPLETED":
             return t.arsPayment.completedNotice;
         case "EXPIRED":
+            if (swap.error_code === "expired_unpaid") {
+                return t.arsPayment.expiredUnpaidNotice;
+            }
             return swap.watch_pending ? t.arsPayment.expiredWatchingNotice : t.arsPayment.expiredNotice;
         // Paid in ARS but no crypto went out: never worded as a delivery.
         case "SETTLED_TO_BALANCE":
@@ -99,11 +109,14 @@ export default function PurchaseStatus({
     const isWaiting = swap.status === "WAITING_DEPOSIT";
     const countdown = useCountdown(swap.expires_at, isWaiting);
     const underReview = isUnderReview(swap);
+    const expiredUnpaid = swap.error_code === "expired_unpaid";
     const title = isWaiting
         ? t.arsPayment.title
         : underReview
           ? t.arsPayment.reviewTitle
-          : t.arsPayment.statusLabel[swap.status] || swap.status;
+          : expiredUnpaid
+            ? t.arsPayment.expiredUnpaidTitle
+            : t.arsPayment.statusLabel[swap.status] || swap.status;
     const notice = noticeFor(t, swap);
     const amountOut =
         swap.amount_out_final !== null && swap.amount_out_final !== undefined
@@ -166,8 +179,8 @@ export default function PurchaseStatus({
                     label={t.quote.youSend}
                     value={`${formatArsCents(swap.amount_in_expected, lang)} ARS`}
                 />
-                {/* Settled to balance: no crypto went out, so no crypto amount either. */}
-                {swap.status !== "SETTLED_TO_BALANCE" ? (
+                {/* Settled to balance or expired unpaid: no crypto goes out, so no crypto amount either. */}
+                {swap.status !== "SETTLED_TO_BALANCE" && !expiredUnpaid ? (
                     <BreakdownRow
                         label={t.status.youReceive}
                         value={formatAssetAmount(amountOut, swap.to, { btcUnit, network: true })}

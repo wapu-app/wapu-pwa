@@ -75,6 +75,10 @@ const DIRECT_FIAT_TYPE = "fast_fiat_transfer";
 // See docs/swaps-page.md.
 const ARS_LATE_WATCH_MS = 60 * 60 * 1000;
 
+// Status first: the backend always sends an English `error`, so it is only
+// the fallback for statuses without their own localized copy.
+const STATUS_ERROR_KEYS = { 401: "authRequired", 403: "purchasesDisabled", 409: "noLiquidity", 429: "rateLimited" };
+
 // A backend error message, reworded when it speaks in base units: the user
 // never reads "base units" on this page.
 function backendError(message) {
@@ -463,10 +467,11 @@ export default function SwapsPage() {
 
     // Same polling for a direct-fiat order, on its own resource. `watch_pending`
     // keeps an EXPIRED purchase alive: the bank may still report its payment.
+    // `payout_status: "expired"` is final: the unpaid hold was already released.
     const isTentativeTerminal =
         Boolean(tentative) &&
-        TENTATIVE_TERMINAL_STATUSES.includes(tentative.status) &&
-        !tentative.watch_pending;
+        (tentative.payout_status === "expired" ||
+            (TENTATIVE_TERMINAL_STATUSES.includes(tentative.status) && !tentative.watch_pending));
     useEffect(() => {
         if (!tentativeId || isTentativeTerminal || tentativePollStopped) {
             return undefined;
@@ -607,17 +612,11 @@ export default function SwapsPage() {
     };
 
     const errorOf = (status, data, fallbackKey) => {
-        if (status === 401) {
-            return { key: "authRequired" };
-        }
-        if (status === 429) {
-            return { key: "rateLimited" };
+        if (STATUS_ERROR_KEYS[status]) {
+            return { key: STATUS_ERROR_KEYS[status] };
         }
         if (data && data.error) {
             return backendError(data.error);
-        }
-        if (status === 409) {
-            return { key: "noLiquidity" };
         }
         return { key: fallbackKey };
     };

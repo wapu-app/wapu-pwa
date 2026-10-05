@@ -6,7 +6,7 @@ import PurchaseStatus, {
     purchaseOrderOf,
 } from "../../../components/Swaps/PurchaseStatus";
 import { TRANSLATIONS } from "../../../components/Swaps/i18n";
-import { FUNDED_PURCHASE, PURCHASE } from "../../fixtures/crypto-purchase";
+import { EXPIRED_PURCHASE, FUNDED_PURCHASE, PURCHASE } from "../../fixtures/crypto-purchase";
 import { renderWithTamagui } from "../../test-utils";
 
 const t = TRANSLATIONS.es;
@@ -118,6 +118,36 @@ describe("PurchaseStatus — direct-fiat purchases", () => {
     it("says an expired purchase is still being watched while watch_pending", () => {
         renderPurchase({ ...FUNDED_PURCHASE, status: "EXPIRED", watch_pending: true });
         expect(screen.getByText(t.arsPayment.expiredWatchingNotice)).toBeInTheDocument();
+    });
+
+    it.each(["es", "en"])("shows an unpaid expired purchase as final, never delivered or credited (%s)", (lang) => {
+        const tl = TRANSLATIONS[lang];
+        renderWithTamagui(
+            <PurchaseStatus
+                t={tl}
+                lang={lang}
+                btcUnit="BTC"
+                swap={purchaseOrderOf(EXPIRED_PURCHASE)}
+                errorText={null}
+                onRetryFunding={vi.fn()}
+                onNewSwap={vi.fn()}
+            />
+        );
+        expect(screen.getByText(tl.arsPayment.expiredUnpaidTitle)).toBeInTheDocument();
+        expect(screen.getByText(tl.arsPayment.expiredUnpaidNotice)).toBeInTheDocument();
+        expect(screen.queryByText(tl.arsPayment.expiredWatchingNotice)).not.toBeInTheDocument();
+        expect(screen.queryByText(tl.arsPayment.completedNotice)).not.toBeInTheDocument();
+        expect(screen.queryByText(tl.arsPayment.settledNotice)).not.toBeInTheDocument();
+        expect(screen.queryByText(tl.status.youReceive)).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: tl.fiatPayout.retry })).not.toBeInTheDocument();
+    });
+
+    it("maps payout_status expired to a final EXPIRED order even if watch_pending lags", () => {
+        expect(purchaseOrderOf({ ...EXPIRED_PURCHASE, watch_pending: true })).toMatchObject({
+            status: "EXPIRED",
+            watch_pending: false,
+            error_code: "expired_unpaid",
+        });
     });
 
     it("shows a completed purchase as delivered", () => {

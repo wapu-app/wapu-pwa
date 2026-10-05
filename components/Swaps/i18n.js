@@ -114,7 +114,10 @@ export const TRANSLATIONS = {
             createFailed: "No pudimos crear el swap.",
             network: "Error de red. Intentá de nuevo.",
             rateLimited: "Demasiados intentos. Esperá un momento e intentá de nuevo.",
-            noLiquidity: "No hay liquidez para el monto solicitado.",
+            noLiquidity:
+                "No hay receptor ni liquidez disponible en este momento. Intentá de nuevo más tarde.",
+            purchasesDisabled:
+                "Las compras de cripto no están disponibles para esta cuenta en este momento.",
             notFound: "No encontramos ese swap.",
             authRequired: "Iniciá sesión para operar con pesos.",
             fundingFailed: "No pudimos generar las instrucciones de depósito.",
@@ -189,6 +192,9 @@ export const TRANSLATIONS = {
             failedNotice: "La orden falló. Contactanos con el ID de la orden.",
             expiredWatchingNotice:
                 "La orden expiró. Si ya transferiste, seguimos buscando tu pago.",
+            expiredUnpaidTitle: "Expirada: no detectamos tu pago",
+            expiredUnpaidNotice:
+                "La orden expiró y no detectamos ningún pago. No se envió nada. Podés iniciar otra operación.",
             settledNotice:
                 "Recibimos tu pago pero no pudimos enviar las cripto: el monto quedó acreditado en tu saldo Wapu.",
             newOrder: "Iniciar otra operación",
@@ -328,7 +334,8 @@ export const TRANSLATIONS = {
             createFailed: "We could not create the swap.",
             network: "Network error. Please try again.",
             rateLimited: "Too many attempts. Wait a moment and try again.",
-            noLiquidity: "No liquidity for the requested amount.",
+            noLiquidity: "No receiver or liquidity is available right now. Try again later.",
+            purchasesDisabled: "Crypto purchases are not available for this account right now.",
             notFound: "We could not find that swap.",
             authRequired: "Log in to trade with pesos.",
             fundingFailed: "We could not issue the deposit instructions.",
@@ -403,6 +410,9 @@ export const TRANSLATIONS = {
             failedNotice: "The order failed. Contact us with the order ID.",
             expiredWatchingNotice:
                 "The order expired. If you already transferred, we are still looking for your payment.",
+            expiredUnpaidTitle: "Expired: no payment detected",
+            expiredUnpaidNotice:
+                "The order expired and no payment was detected. Nothing was sent. You can start another operation.",
             settledNotice:
                 "We received your payment but could not send the crypto: the amount was credited to your Wapu balance.",
             newOrder: "Start another operation",

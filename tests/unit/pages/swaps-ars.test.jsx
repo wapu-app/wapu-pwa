@@ -2,7 +2,7 @@ import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PURCHASE_QUOTE, PURCHASE, FUNDED_PURCHASE } from "../../fixtures/crypto-purchase";
+import { PURCHASE_QUOTE, PURCHASE, FUNDED_PURCHASE, EXPIRED_PURCHASE } from "../../fixtures/crypto-purchase";
 
 import SwapsPage from "../../../pages/swaps";
 import { TRANSLATIONS } from "../../../components/Swaps/i18n";
@@ -347,7 +347,7 @@ describe("SwapsPage — ARS legs", () => {
         const user = userEvent.setup();
         mocks.getCryptoPurchaseQuote.mockResolvedValue({ data: PURCHASE_QUOTE, status: 200 });
         mocks.createCryptoPurchaseTentative.mockResolvedValue({ data: PURCHASE, status: 201 });
-        mocks.requestDirectFiatFunding.mockResolvedValueOnce({ data: { error: "Try funding again" }, status: 409 })
+        mocks.requestDirectFiatFunding.mockResolvedValueOnce({ data: { error: "Try funding again" }, status: 502 })
             .mockResolvedValue({ data: FUNDED_PURCHASE, status: 201 });
         mocks.getDirectFiatTentative.mockResolvedValue({ data: PURCHASE, status: 200 });
         renderWithTamagui(<SwapsPage />);
@@ -623,10 +623,13 @@ describe("SwapsPage — ARS legs", () => {
 
     it.each([
         [400, { error: "ARS swaps are disabled" }, "ARS swaps are disabled"],
-        [401, {}, "Iniciá sesión para operar con pesos."],
-        [409, {}, "No hay liquidez para el monto solicitado."],
+        [400, { error: "amount below minimum (1000000 base units of ARS)" }, /El monto mínimo es .*10\.000,00/],
+        [401, { error: "Unauthorized" }, TRANSLATIONS.es.errors.authRequired],
+        [403, { error: "Account is not active" }, TRANSLATIONS.es.errors.purchasesDisabled],
+        [409, { error: "No receiver available" }, TRANSLATIONS.es.errors.noLiquidity],
+        [409, {}, TRANSLATIONS.es.errors.noLiquidity],
         [422, { error: "Monthly ARS purchase limit exceeded" }, "Monthly ARS purchase limit exceeded"],
-        [429, { error: "Too many requests" }, "Demasiados intentos. Esperá un momento e intentá de nuevo."],
+        [429, { error: "Too many requests" }, TRANSLATIONS.es.errors.rateLimited],
     ])("maps a %s from purchase creation to its message", async (status, data, message) => {
         logIn();
         const user = userEvent.setup();
@@ -639,6 +642,25 @@ describe("SwapsPage — ARS legs", () => {
 
         expect(await screen.findByText(message)).toBeInTheDocument();
         expect(mocks.push).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        [403, TRANSLATIONS.es.errors.purchasesDisabled],
+        [409, TRANSLATIONS.es.errors.noLiquidity],
+    ])("localizes a %s from purchase funding even when the backend sends an error", async (status, message) => {
+        logIn();
+        const user = userEvent.setup();
+        mocks.getCryptoPurchaseQuote.mockResolvedValue({ data: PURCHASE_QUOTE, status: 200 });
+        mocks.createCryptoPurchaseTentative.mockResolvedValue({ data: PURCHASE, status: 201 });
+        mocks.requestDirectFiatFunding.mockResolvedValue({ data: { error: "raw backend text" }, status });
+        mocks.getDirectFiatTentative.mockResolvedValue({ data: PURCHASE, status: 200 });
+        renderWithTamagui(<SwapsPage />);
+
+        await reachArsBuyAddress(user);
+        await user.click(screen.getByRole("button", { name: "Crear orden" }));
+
+        expect(await screen.findByText(message)).toBeInTheDocument();
+        expect(screen.queryByText("raw backend text")).not.toBeInTheDocument();
     });
 });
 
@@ -762,6 +784,18 @@ describe("SwapsPage — ARS polling", () => {
         await tick(10000);
         await tick(30000);
         expect(mocks.getDirectFiatTentative).toHaveBeenCalledTimes(4);
+        expect(screen.getByRole("button", { name: "Iniciar otra operación" })).toBeInTheDocument();
+    });
+
+    it("stops polling an expired purchase whose unpaid hold was released", async () => {
+        mocks.query = { tentative: PURCHASE.tentative_id };
+        mocks.getDirectFiatTentative.mockResolvedValue({ data: EXPIRED_PURCHASE, status: 200 });
+        renderWithTamagui(<SwapsPage />);
+        await tick(0);
+        await tick(30000);
+        expect(mocks.getDirectFiatTentative).toHaveBeenCalledTimes(1);
+        expect(screen.getByText(TRANSLATIONS.es.arsPayment.expiredUnpaidNotice)).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: TRANSLATIONS.es.fiatPayout.retry })).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Iniciar otra operación" })).toBeInTheDocument();
     });
 

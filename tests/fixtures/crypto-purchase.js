@@ -33,3 +33,11 @@ export const FUNDED_PURCHASE = {
     cvu: "0000000000000000000000",
     watch_pending: true,
 };
+
+// Expired with no payment detected: the backend released the unpaid hold.
+export const EXPIRED_PURCHASE = {
+    ...FUNDED_PURCHASE,
+    status: "EXPIRED",
+    payout_status: "expired",
+    watch_pending: false,
+};
