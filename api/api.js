@@ -585,21 +585,6 @@ export async function getMySwaps() {
     });
 }
 
-// ARS -> crypto purchase; session required (the monthly ARS limit is per user).
-// Body: { to_asset, payout_address, amount_ars (centavos) | amount_out (base unit
-// of `to_asset`) }. The returned swap carries the final `amount_in_expected`.
-export async function createArsSwap(body) {
-    const response = await apiRequest({
-        endpoint: "/swaps/ars",
-        method: "POST",
-        body: body,
-    });
-    if (isOkStatus(response.status)) {
-        invalidate(CACHE_KEY.TRANSACTIONS);
-    }
-    return response;
-}
-
 // Crypto -> ARS through direct-fiat tentatives (session required). Unlike swaps,
 // `amount_ars` is in pesos and `total_amount_usdt` in dollars — see
 // app_backend/docs/2026-04-02-direct-payment-tentative.md in wapu-app/survivors.
@@ -622,6 +607,28 @@ export async function createDirectFiatTentative(body) {
         endpoint: "/transactions/direct-fiat/tentatives",
         method: "POST",
         body: body,
+    });
+}
+
+// ARS -> crypto purchase (ramp-on) through the same direct-fiat resources:
+// `type: "crypto_purchase"` on the existing quote and tentative routes, then
+// requestDirectFiatFunding / getDirectFiatTentative as for a sale. Params and
+// body carry payout_currency + payout_network (see PURCHASE_TARGETS in
+// components/Swaps/primitives.jsx) and exactly one of `amount_ars_cents` or
+// `amount_out` (sats, or USDT cents). Creation adds `payout_address`.
+export async function getCryptoPurchaseQuote(params) {
+    const query = new URLSearchParams({ type: "crypto_purchase" });
+    Object.entries(params).forEach(([key, value]) => query.set(key, String(value)));
+    return await apiRequest({
+        endpoint: `/transactions/direct-fiat/quote?${query.toString()}`,
+    });
+}
+
+export async function createCryptoPurchaseTentative(body) {
+    return await apiRequest({
+        endpoint: "/transactions/direct-fiat/tentatives",
+        method: "POST",
+        body: { ...body, type: "crypto_purchase" },
     });
 }
 

@@ -4,39 +4,46 @@ import { Paragraph, XStack, YStack } from "tamagui";
 import CopyButton from "../CopyButton";
 import { Overline, WarningBanner, arsCentsToPlain, formatArsCents, mono } from "./primitives";
 
-// Bank-transfer instructions of an ARS purchase. The amount comes from the swap
+// Bank-transfer instructions of an ARS purchase. The amount comes from the order
 // (`amount_in_expected`), never from the quote — see docs/swaps-page.md.
 export default function ArsPaymentInstructions({ t, lang, swap, countdown }) {
     const amountText = `${formatArsCents(swap.amount_in_expected, lang)} ARS`;
+    // A direct-fiat purchase also carries the receiver's CVU next to the alias.
+    const accounts = [
+        [t.arsPayment.alias, swap.deposit_address],
+        [t.arsPayment.cvu, swap.cvu],
+    ].filter(([, value]) => value);
 
     return (
         <YStack gap={"$3"}>
-            <YStack gap={"$1.5"}>
-                <Overline>{t.arsPayment.alias}</Overline>
-                <XStack
-                    alignItems="center"
-                    gap={"$2"}
-                    padding={"$3"}
-                    borderRadius={"$5"}
-                    borderWidth={"$1"}
-                    borderColor={"$neutral8"}
-                    backgroundColor={"$brandSurfaceDeep"}
-                >
-                    <Paragraph
-                        flex={1}
-                        color={"$brandOffWhite"}
-                        style={mono(15, { wordBreak: "break-all", fontWeight: 600 })}
+            {accounts.map(([label, value]) => (
+                <YStack key={label} gap={"$1.5"}>
+                    <Overline>{label}</Overline>
+                    <XStack
+                        alignItems="center"
+                        gap={"$2"}
+                        padding={"$3"}
+                        borderRadius={"$5"}
+                        borderWidth={"$1"}
+                        borderColor={"$neutral8"}
+                        backgroundColor={"$brandSurfaceDeep"}
                     >
-                        {swap.deposit_address}
-                    </Paragraph>
-                    <CopyButton
-                        value={swap.deposit_address}
-                        size={"28px"}
-                        copyLabel={t.status.copyAria(t.arsPayment.alias)}
-                        copiedLabel={t.status.copied}
-                    />
-                </XStack>
-            </YStack>
+                        <Paragraph
+                            flex={1}
+                            color={"$brandOffWhite"}
+                            style={mono(15, { wordBreak: "break-all", fontWeight: 600 })}
+                        >
+                            {value}
+                        </Paragraph>
+                        <CopyButton
+                            value={value}
+                            size={"28px"}
+                            copyLabel={t.status.copyAria(label)}
+                            copiedLabel={t.status.copied}
+                        />
+                    </XStack>
+                </YStack>
+            ))}
 
             <YStack gap={"$1.5"}>
                 <Overline>{t.arsPayment.amount}</Overline>

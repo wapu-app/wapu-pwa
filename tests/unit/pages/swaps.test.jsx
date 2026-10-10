@@ -337,6 +337,18 @@ describe("SwapsPage", () => {
         expect(mocks.createSwap).not.toHaveBeenCalled();
     });
 
+    it.each([403, 409])("keeps the backend text for a %s on crypto swap creation", async (status) => {
+        const user = userEvent.setup();
+        await reachAddressPhase(user);
+        mocks.createSwap.mockResolvedValue({ data: { error: "Swap backend says no" }, status });
+
+        await user.type(screen.getByLabelText(/Dirección de destino/), PAYOUT_BTC);
+        await user.type(screen.getByLabelText(/Dirección de reembolso/), REFUND_LBTC);
+        await user.click(screen.getByRole("button", { name: /crear swap/i }));
+
+        expect(await screen.findByText("Swap backend says no")).toBeInTheDocument();
+    });
+
     it("creates the swap and moves to the status phase", async () => {
         const user = userEvent.setup();
         await reachAddressPhase(user);
