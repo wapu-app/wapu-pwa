@@ -495,6 +495,20 @@ describe("SwapsPage — ARS legs", () => {
         expect(screen.queryByText(/Sin KYC, sin custodia/)).not.toBeInTheDocument();
     });
 
+    it("shows the swap id as the payment reference, never the Fiwind movement id", async () => {
+        mocks.query = { id: SWAP_ID };
+        mocks.getSwap.mockResolvedValue({
+            data: { ...ARS_SWAP, status: "SENDING", deposit_txid: "fiwind:121531037" },
+            status: 200,
+        });
+        renderWithTamagui(<SwapsPage />);
+
+        expect(await screen.findByText("Referencia del pago")).toBeInTheDocument();
+        expect(screen.queryByText(/fiwind/)).not.toBeInTheDocument();
+        // TxidRow shortens to 10 + 8 characters; the order id header uses 8 + 6.
+        expect(screen.getByText("11111111-2…55555555")).toBeInTheDocument();
+    });
+
     it("sells BTC Lightning for ARS through a fast_fiat_transfer tentative", async () => {
         logIn();
         const user = userEvent.setup();
