@@ -134,9 +134,9 @@ export function flowOf(from, to) {
 }
 
 // The "you get" choices for a given "you send" leg.
-function receiveCodesFor(from, loggedIn) {
+function receiveCodesFor(from, loggedIn, canBuyArs = false) {
     if (from === "ARS") {
-        return ARS_BUY_TARGETS;
+        return loggedIn && canBuyArs ? ARS_BUY_TARGETS : [];
     }
     const codes = from === "BTC_LIGHTNING" ? [] : CRYPTO_SWAP_CODES.filter((code) => code !== from);
     if (loggedIn && ARS_SELL_SOURCES.includes(from)) {
@@ -145,32 +145,34 @@ function receiveCodesFor(from, loggedIn) {
     return codes;
 }
 
-export function isSupportedPair(from, to, loggedIn) {
+export function isSupportedPair(from, to, loggedIn, canBuyArs = false) {
     if (!SEND_CODES.includes(from)) {
         return false;
     }
     if (!loggedIn && AUTH_ONLY_SEND.includes(from)) {
         return false;
     }
-    return receiveCodesFor(from, loggedIn).includes(to);
+    return receiveCodesFor(from, loggedIn, canBuyArs).includes(to);
 }
 
-export function sendOptions(loggedIn) {
-    return SEND_CODES.filter((code) => loggedIn || !AUTH_ONLY_SEND.includes(code)).map(optionOf);
+export function sendOptions(loggedIn, canBuyArs = false) {
+    return SEND_CODES.filter((code) =>
+        (loggedIn || !AUTH_ONLY_SEND.includes(code)) && (code !== "ARS" || canBuyArs)
+    ).map(optionOf);
 }
 
-export function receiveOptions(from, loggedIn) {
-    return receiveCodesFor(from, loggedIn).map(optionOf);
+export function receiveOptions(from, loggedIn, canBuyArs = false) {
+    return receiveCodesFor(from, loggedIn, canBuyArs).map(optionOf);
 }
 
 // Turns any (from, to) into a supported pair, keeping `from` when possible.
-export function normalizePair(from, to, loggedIn) {
-    if (isSupportedPair(from, to, loggedIn)) {
+export function normalizePair(from, to, loggedIn, canBuyArs = false) {
+    if (isSupportedPair(from, to, loggedIn, canBuyArs)) {
         return { from, to };
     }
-    const sendCodes = sendOptions(loggedIn).map((option) => option.value);
+    const sendCodes = sendOptions(loggedIn, canBuyArs).map((option) => option.value);
     const nextFrom = sendCodes.includes(from) ? from : sendCodes[0];
-    const targets = receiveCodesFor(nextFrom, loggedIn);
+    const targets = receiveCodesFor(nextFrom, loggedIn, canBuyArs);
     return { from: nextFrom, to: targets.includes(to) ? to : targets[0] };
 }
 

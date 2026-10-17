@@ -52,6 +52,7 @@ import {
     getDirectFiatTentative,
     getSwap,
     getSwapQuote,
+    getUserSettings,
     requestDirectFiatFunding,
 } from "../../api/api";
 import closeIcon from "../../public/closeIcon.svg";
@@ -223,14 +224,35 @@ export default function SwapsPage() {
     const [btcUnit, setBtcUnit] = useState(DEFAULT_BTC_UNIT);
     // Session-only UI (ARS legs, close button); read after mount, no cookies in SSR.
     const [loggedIn, setLoggedIn] = useState(false);
+    const [betaEnabled, setBetaEnabled] = useState(false);
+    const formEdited = useRef(false);
+    const canBuyArs = loggedIn && betaEnabled;
 
     // Read after mount: localStorage does not exist during SSR.
     useEffect(() => {
         setBtcUnit(readStoredBtcUnit());
         let cancelled = false;
-        resolveLoggedIn().then((value) => {
+        resolveLoggedIn().then(async (value) => {
             if (!cancelled) {
                 setLoggedIn(value);
+            }
+            if (cancelled || !value) {
+                return;
+            }
+            try {
+                const { data, status } = await getUserSettings();
+                if (!cancelled) {
+                    const beta = status === 200 && data?.beta_version === true;
+                    setBetaEnabled(beta);
+                    if (beta && !formEdited.current) {
+                        setFrom("ARS");
+                        setTo("BTC_LIGHTNING");
+                    }
+                }
+            } catch {
+                if (!cancelled) {
+                    setBetaEnabled(false);
+                }
             }
         });
         return () => {
@@ -293,13 +315,13 @@ export default function SwapsPage() {
     // Once the session is known, drop a pair that needs one (ARS legs) or that
     // the lists no longer offer.
     useEffect(() => {
-        const next = normalizePair(from, to, loggedIn);
+        const next = normalizePair(from, to, loggedIn, canBuyArs);
         if (next.from !== from || next.to !== to) {
             setFrom(next.from);
             setTo(next.to);
         }
         // Only on session changes: selector handlers normalize on their own.
-    }, [loggedIn]);
+    }, [loggedIn, canBuyArs]);
 
     // Whichever field the user typed in is the one we send; the other one is an
     // output of the quote. Only the pinned text is a dependency of the fetch —
@@ -320,6 +342,12 @@ export default function SwapsPage() {
     // shown in the summary is the one they accepted.
     useEffect(() => {
         if (phase !== 1) {
+            return undefined;
+        }
+        if (from === "ARS" && !canBuyArs) {
+            setQuote(null);
+            setQuoteLoading(false);
+            clearMirroredAmount();
             return undefined;
         }
         if (from === to) {
@@ -430,7 +458,7 @@ export default function SwapsPage() {
             cancelled = true;
             clearTimeout(timer);
         };
-    }, [phase, from, to, side, pinnedText, pinnedCode, btcUnit, clearMirroredAmount]);
+    }, [phase, from, to, side, pinnedText, pinnedCode, btcUnit, clearMirroredAmount, canBuyArs]);
 
     const isTerminal = isSwapTerminal(swap);
 
@@ -558,6 +586,7 @@ export default function SwapsPage() {
     const handleAmountChange = (raw) => {
         const value = raw.replace(",", ".");
         if (AMOUNT_PATTERN.test(value)) {
+            formEdited.current = true;
             setSide("in");
             setAmount(value);
         }
@@ -566,6 +595,7 @@ export default function SwapsPage() {
     const handleAmountOutChange = (raw) => {
         const value = raw.replace(",", ".");
         if (AMOUNT_PATTERN.test(value)) {
+            formEdited.current = true;
             setSide("out");
             setAmountOut(value);
         }
@@ -587,7 +617,8 @@ export default function SwapsPage() {
 
     // Crypto -> ARS can only be priced from the ARS side: entering it pins "you get".
     const applyPair = (nextFrom, nextTo, nextSide) => {
-        const pair = normalizePair(nextFrom, nextTo, loggedIn);
+        formEdited.current = true;
+        const pair = normalizePair(nextFrom, nextTo, loggedIn, canBuyArs);
         setFrom(pair.from);
         setTo(pair.to);
         setSide(flowOf(pair.from, pair.to) === "arsSell" ? "out" : nextSide);
@@ -608,7 +639,7 @@ export default function SwapsPage() {
     // that is not offered (ARS -> USDT Ethereum) is normalized instead.
     const handleSwitch = () => {
         const reversedSide = side === "in" ? "out" : "in";
-        const pair = normalizePair(to, from, loggedIn);
+        const pair = normalizePair(to, from, loggedIn, canBuyArs);
         if (pair.from === to && pair.to === from) {
             setAmount(amountOut);
             setAmountOut(amount);
@@ -626,6 +657,9 @@ export default function SwapsPage() {
     };
 
     const handleContinue = () => {
+        if (flow === "arsBuy" && !canBuyArs) {
+            return;
+        }
         if (quote && (flow === "arsSell" || quote.liquidity_ok)) {
             setCreateError(null);
             setPhase(2);
@@ -708,7 +742,7 @@ export default function SwapsPage() {
         });
 
     const handleCreate = async () => {
-        if (!quote) {
+        if (!quote || (flow === "arsBuy" && !canBuyArs)) {
             return;
         }
         setCreating(true);
@@ -868,9 +902,9 @@ export default function SwapsPage() {
                                 t={t}
                                 lang={lang}
                                 flow={flow}
-                                sendOptions={sendOptions(loggedIn)}
-                                canSwitch={isSupportedPair(to, from, loggedIn)}
-                                receiveOptions={receiveOptions(from, loggedIn)}
+                                sendOptions={sendOptions(loggedIn, canBuyArs)}
+                                canSwitch={isSupportedPair(to, from, loggedIn, canBuyArs)}
+                                receiveOptions={receiveOptions(from, loggedIn, canBuyArs)}
                                 from={from}
                                 to={to}
                                 amount={amount}

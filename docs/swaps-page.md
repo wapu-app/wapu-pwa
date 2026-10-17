@@ -107,7 +107,19 @@ gate after mount with `resolveLoggedIn()`: cookie `isLoggedIn` +
 cookie is present but the token expired, because the layout does not restore
 sessions on this public route. Anonymous visitors trigger no request. The page
 then filters both selectors through `sendOptions` / `receiveOptions`.
-`receiveOptions`. "You send" never offers USDT Ethereum/Polygon. Every pair
+The authenticated page also requests `GET /users/user-settings` through
+`getUserSettings`. ARS is offered as an input only after a successful response
+with `beta_version: true`; loading, absent settings and failed requests keep
+ARS purchases unavailable. Once beta is confirmed, a fresh form defaults to
+ARS → BTC Lightning. If the user has already selected a pair or entered an
+amount while settings load, their input is preserved. Other visitors keep
+the L-BTC → BTC default. Pair selection, reversal, quote and creation use
+the same permission. This does not restrict crypto sales to ARS or crypto
+swaps, and existing purchase links keep showing their issued instructions and
+polling regardless of beta. The backend remains responsible for enforcing
+beta and the global `ramp_on` flag on new ramp-on operations.
+
+"You send" never offers USDT Ethereum/Polygon. Every pair
 change goes through `normalizePair`, so the form never sits on an unoffered
 pair. With a session, an X at the top right leaves the page (`router.back()`,
 or `/home` when there is no history).
@@ -190,6 +202,7 @@ All calls go through `api/api.js` — no raw `fetch` in the page or components.
 | `createSwap(body)`               | `POST /swaps`                              | optional   |
 | `getSwap(uuid)`                  | `GET /swaps/<uuid>`                        | none       |
 | `getMySwaps()`                   | `GET /swaps`                               | required   |
+| `getUserSettings()`              | `GET /users/user-settings`                 | required   |
 | `getCryptoPurchaseQuote(params)` | `GET /transactions/direct-fiat/quote?type=crypto_purchase` | required |
 | `createCryptoPurchaseTentative(body)` | `POST /transactions/direct-fiat/tentatives` (`type: "crypto_purchase"`) | required |
 | `getDirectFiatQuote(args)`       | `GET /transactions/direct-fiat/quote`      | required   |
