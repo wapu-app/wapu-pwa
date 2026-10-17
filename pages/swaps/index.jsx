@@ -225,6 +225,7 @@ export default function SwapsPage() {
     // Session-only UI (ARS legs, close button); read after mount, no cookies in SSR.
     const [loggedIn, setLoggedIn] = useState(false);
     const [betaEnabled, setBetaEnabled] = useState(false);
+    const formEdited = useRef(false);
     const canBuyArs = loggedIn && betaEnabled;
 
     // Read after mount: localStorage does not exist during SSR.
@@ -241,7 +242,12 @@ export default function SwapsPage() {
             try {
                 const { data, status } = await getUserSettings();
                 if (!cancelled) {
-                    setBetaEnabled(status === 200 && data?.beta_version === true);
+                    const beta = status === 200 && data?.beta_version === true;
+                    setBetaEnabled(beta);
+                    if (beta && !formEdited.current) {
+                        setFrom("ARS");
+                        setTo("BTC_LIGHTNING");
+                    }
                 }
             } catch {
                 if (!cancelled) {
@@ -580,6 +586,7 @@ export default function SwapsPage() {
     const handleAmountChange = (raw) => {
         const value = raw.replace(",", ".");
         if (AMOUNT_PATTERN.test(value)) {
+            formEdited.current = true;
             setSide("in");
             setAmount(value);
         }
@@ -588,6 +595,7 @@ export default function SwapsPage() {
     const handleAmountOutChange = (raw) => {
         const value = raw.replace(",", ".");
         if (AMOUNT_PATTERN.test(value)) {
+            formEdited.current = true;
             setSide("out");
             setAmountOut(value);
         }
@@ -609,6 +617,7 @@ export default function SwapsPage() {
 
     // Crypto -> ARS can only be priced from the ARS side: entering it pins "you get".
     const applyPair = (nextFrom, nextTo, nextSide) => {
+        formEdited.current = true;
         const pair = normalizePair(nextFrom, nextTo, loggedIn, canBuyArs);
         setFrom(pair.from);
         setTo(pair.to);

@@ -110,7 +110,10 @@ then filters both selectors through `sendOptions` / `receiveOptions`.
 The authenticated page also requests `GET /users/user-settings` through
 `getUserSettings`. ARS is offered as an input only after a successful response
 with `beta_version: true`; loading, absent settings and failed requests keep
-ARS purchases unavailable. Pair selection, reversal, quote and creation use
+ARS purchases unavailable. Once beta is confirmed, a fresh form defaults to
+ARS → BTC Lightning. If the user has already selected a pair or entered an
+amount while settings load, their input is preserved. Other visitors keep
+the L-BTC → BTC default. Pair selection, reversal, quote and creation use
 the same permission. This does not restrict crypto sales to ARS or crypto
 swaps, and existing purchase links keep showing their issued instructions and
 polling regardless of beta. The backend remains responsible for enforcing

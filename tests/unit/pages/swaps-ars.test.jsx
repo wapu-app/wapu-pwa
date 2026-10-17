@@ -201,6 +201,8 @@ describe("SwapsPage — ARS legs", () => {
         const receive = screen.getByLabelText("select Recibís");
         expect(optionValues(send)).toEqual(["BTC", "LBTC", "USDT_LIQUID"]);
         expect(optionValues(receive)).not.toContain("ARS");
+        expect(send).toHaveValue("LBTC");
+        expect(receive).toHaveValue("BTC");
         expect(screen.queryByLabelText("Cerrar")).not.toBeInTheDocument();
     });
 
@@ -241,6 +243,8 @@ describe("SwapsPage — ARS legs", () => {
         await waitFor(() => expect(mocks.getUserSettings).toHaveBeenCalledTimes(1));
         expect(optionValues(screen.getByLabelText("select Vos enviás"))).not.toContain("ARS");
         expect(optionValues(screen.getByLabelText("select Recibís"))).toContain("ARS");
+        expect(screen.getByLabelText("select Vos enviás")).toHaveValue("LBTC");
+        expect(screen.getByLabelText("select Recibís")).toHaveValue("BTC");
         await user.selectOptions(screen.getByLabelText("select Recibís"), "ARS");
         expect(screen.getByLabelText("select Vos enviás")).toHaveValue("LBTC");
         expect(screen.getByRole("button", { name: /invertir/i })).toBeDisabled();
@@ -258,6 +262,34 @@ describe("SwapsPage — ARS legs", () => {
         expect(optionValues(screen.getByLabelText("select Vos enviás"))).not.toContain("ARS");
         await act(async () => resolveSettings({ data: { beta_version: true }, status: 200 }));
         expect(optionValues(screen.getByLabelText("select Vos enviás"))).toContain("ARS");
+        expect(screen.getByLabelText("select Vos enviás")).toHaveValue("ARS");
+        expect(screen.getByLabelText("select Recibís")).toHaveValue("BTC_LIGHTNING");
+    });
+
+    it("preserves a pair selected before beta settings arrive", async () => {
+        logIn();
+        let resolveSettings;
+        mocks.getUserSettings.mockReturnValue(new Promise((resolve) => { resolveSettings = resolve; }));
+        const user = userEvent.setup();
+        renderWithTamagui(<SwapsPage />);
+        await waitFor(() => expect(mocks.getUserSettings).toHaveBeenCalledTimes(1));
+        await user.selectOptions(screen.getByLabelText("select Vos enviás"), "BTC");
+        await act(async () => resolveSettings({ data: { beta_version: true }, status: 200 }));
+        expect(screen.getByLabelText("select Vos enviás")).toHaveValue("BTC");
+        expect(screen.getByLabelText("select Recibís")).toHaveValue("LBTC");
+    });
+
+    it("preserves an amount entered before beta settings arrive", async () => {
+        logIn();
+        let resolveSettings;
+        mocks.getUserSettings.mockReturnValue(new Promise((resolve) => { resolveSettings = resolve; }));
+        const user = userEvent.setup();
+        renderWithTamagui(<SwapsPage />);
+        await waitFor(() => expect(mocks.getUserSettings).toHaveBeenCalledTimes(1));
+        await user.type(screen.getByLabelText("Monto a enviar"), "1000");
+        await act(async () => resolveSettings({ data: { beta_version: true }, status: 200 }));
+        expect(screen.getByLabelText("select Vos enviás")).toHaveValue("LBTC");
+        expect(screen.getByLabelText("Monto a enviar")).toHaveValue("1000");
     });
 
     it("keeps ARS purchases hidden after a settings network error", async () => {
@@ -290,6 +322,9 @@ describe("SwapsPage — ARS legs", () => {
 
         const close = await screen.findByRole("button", { name: "Cerrar" });
         expect(optionValues(screen.getByLabelText("select Vos enviás"))).toContain("ARS");
+        expect(screen.getByLabelText("select Vos enviás")).toHaveValue("ARS");
+        expect(screen.getByLabelText("select Recibís")).toHaveValue("BTC_LIGHTNING");
+        await user.selectOptions(screen.getByLabelText("select Vos enviás"), "LBTC");
         expect(optionValues(screen.getByLabelText("select Recibís"))).toContain("ARS");
 
         await user.click(close);
