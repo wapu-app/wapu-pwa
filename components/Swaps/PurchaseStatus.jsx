@@ -186,11 +186,13 @@ export default function PurchaseStatus({
                         value={formatAssetAmount(amountOut, swap.to, { btcUnit, network: true })}
                     />
                 ) : null}
+                {/* Shown once the payment is matched. The reference is the swap id: `deposit_txid`
+                    is Fiwind's internal movement id, which the user cannot find anywhere. */}
                 {swap.deposit_txid ? (
                     <TxidRow
                         t={t}
                         label={t.arsPayment.paymentRef}
-                        txid={swap.deposit_txid}
+                        txid={swap.swap_id}
                         assetCode={swap.from}
                     />
                 ) : null}

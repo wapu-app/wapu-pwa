@@ -585,6 +585,10 @@ export async function getMySwaps() {
     });
 }
 
+export async function getUserSettings() {
+    return await apiRequest({ endpoint: "/users/user-settings" });
+}
+
 // Crypto -> ARS through direct-fiat tentatives (session required). Unlike swaps,
 // `amount_ars` is in pesos and `total_amount_usdt` in dollars — see
 // app_backend/docs/2026-04-02-direct-payment-tentative.md in wapu-app/survivors.

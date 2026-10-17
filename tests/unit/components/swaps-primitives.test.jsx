@@ -283,7 +283,7 @@ describe("swaps primitives — pair matrix and login gate", () => {
 
     it("never offers EVM USDT as input, and hides the ARS legs when logged out", () => {
         expect(values(sendOptions(false))).toEqual(["BTC", "LBTC", "USDT_LIQUID"]);
-        expect(values(sendOptions(true))).toEqual([
+        expect(values(sendOptions(true, true))).toEqual([
             "BTC",
             "LBTC",
             "USDT_LIQUID",
@@ -293,7 +293,7 @@ describe("swaps primitives — pair matrix and login gate", () => {
     });
 
     it("offers BTC Lightning as output only with ARS as input", () => {
-        expect(values(receiveOptions("ARS", true))).toEqual([
+        expect(values(receiveOptions("ARS", true, true))).toEqual([
             "BTC_LIGHTNING",
             "BTC",
             "LBTC",
@@ -317,6 +317,17 @@ describe("swaps primitives — pair matrix and login gate", () => {
         expect(flowOf("ARS", "BTC_LIGHTNING")).toBe("arsBuy");
         expect(flowOf("LBTC", "ARS")).toBe("arsSell");
         expect(flowOf("LBTC", "BTC")).toBe("swap");
+    });
+
+    it("requires confirmed beta only for ARS purchases", () => {
+        expect(values(sendOptions(true))).not.toContain("ARS");
+        expect(values(sendOptions(false, true))).not.toContain("ARS");
+        expect(receiveOptions("ARS", true, false)).toEqual([]);
+        expect(isSupportedPair("ARS", "BTC", true, false)).toBe(false);
+        expect(isSupportedPair("ARS", "BTC", true, true)).toBe(true);
+        expect(normalizePair("ARS", "BTC", true, false)).toEqual({ from: "BTC", to: "LBTC" });
+        expect(isSupportedPair("LBTC", "ARS", true, false)).toBe(true);
+        expect(isSupportedPair("BTC", "LBTC", false, false)).toBe(true);
     });
 
     it("normalizes unsupported pairs to an offered one", () => {
@@ -402,10 +413,11 @@ describe("swaps primitives — parseBelowMinimum", () => {
 
 describe("direct-fiat purchase targets", () => {
     it("supports all authenticated ARS purchase targets", () => {
-        expect(receiveOptions("ARS", true).map(option => option.value).sort()).toEqual(
+        expect(receiveOptions("ARS", true, true).map(option => option.value).sort()).toEqual(
             ["BTC", "BTC_LIGHTNING", "LBTC", "USDT_ETHEREUM", "USDT_LIQUID", "USDT_POLYGON"].sort()
         );
-        expect(isSupportedPair("ARS", "LBTC", false)).toBe(false);
+        expect(receiveOptions("ARS", true, false)).toEqual([]);
+        expect(isSupportedPair("ARS", "LBTC", false, true)).toBe(false);
     });
 });
 

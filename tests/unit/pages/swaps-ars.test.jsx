@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
     getDirectFiatTentative: vi.fn(),
     getSwap: vi.fn(),
     getSwapQuote: vi.fn(),
+    getUserSettings: vi.fn(),
     requestDirectFiatFunding: vi.fn(),
     getAccessToken: vi.fn(),
     push: vi.fn(),
@@ -84,6 +85,7 @@ vi.mock("../../../api/api", () => ({
     getDirectFiatTentative: (id) => mocks.getDirectFiatTentative(id),
     getSwap: (id) => mocks.getSwap(id),
     getSwapQuote: (from, to, amount, side) => mocks.getSwapQuote(from, to, amount, side),
+    getUserSettings: () => mocks.getUserSettings(),
     requestDirectFiatFunding: (id) => mocks.requestDirectFiatFunding(id),
 }));
 
@@ -184,6 +186,7 @@ describe("SwapsPage — ARS legs", () => {
                 mock.mockReset();
             }
         });
+        mocks.getUserSettings.mockResolvedValue({ data: { beta_version: true }, status: 200 });
     });
 
     afterEach(() => {
@@ -221,6 +224,60 @@ describe("SwapsPage — ARS legs", () => {
             expect(screen.getByLabelText("select Vos enviás")).toBeInTheDocument()
         );
         expect(mocks.getAccessToken).not.toHaveBeenCalled();
+        expect(mocks.getUserSettings).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        { data: { beta_version: false }, status: 200 },
+        { data: {}, status: 200 },
+        { data: { beta_version: "true" }, status: 200 },
+        { data: { beta_version: true }, status: 500 },
+    ])("hides ARS purchases when settings do not confirm beta: %j", async (settings) => {
+        logIn();
+        mocks.getUserSettings.mockResolvedValue(settings);
+        const user = userEvent.setup();
+        renderWithTamagui(<SwapsPage />);
+
+        await waitFor(() => expect(mocks.getUserSettings).toHaveBeenCalledTimes(1));
+        expect(optionValues(screen.getByLabelText("select Vos enviás"))).not.toContain("ARS");
+        expect(optionValues(screen.getByLabelText("select Recibís"))).toContain("ARS");
+        await user.selectOptions(screen.getByLabelText("select Recibís"), "ARS");
+        expect(screen.getByLabelText("select Vos enviás")).toHaveValue("LBTC");
+        expect(screen.getByRole("button", { name: /invertir/i })).toBeDisabled();
+        expect(mocks.getCryptoPurchaseQuote).not.toHaveBeenCalled();
+        expect(mocks.createCryptoPurchaseTentative).not.toHaveBeenCalled();
+        expect(mocks.getSwapQuote).not.toHaveBeenCalled();
+    });
+
+    it("keeps ARS purchases hidden until the settings request confirms beta", async () => {
+        logIn();
+        let resolveSettings;
+        mocks.getUserSettings.mockReturnValue(new Promise((resolve) => { resolveSettings = resolve; }));
+        renderWithTamagui(<SwapsPage />);
+        await waitFor(() => expect(mocks.getUserSettings).toHaveBeenCalledTimes(1));
+        expect(optionValues(screen.getByLabelText("select Vos enviás"))).not.toContain("ARS");
+        await act(async () => resolveSettings({ data: { beta_version: true }, status: 200 }));
+        expect(optionValues(screen.getByLabelText("select Vos enviás"))).toContain("ARS");
+    });
+
+    it("keeps ARS purchases hidden after a settings network error", async () => {
+        logIn();
+        mocks.getUserSettings.mockRejectedValue(new Error("offline"));
+        renderWithTamagui(<SwapsPage />);
+        await waitFor(() => expect(mocks.getUserSettings).toHaveBeenCalledTimes(1));
+        expect(optionValues(screen.getByLabelText("select Vos enviás"))).not.toContain("ARS");
+    });
+
+    it("still shows issued purchase instructions after beta is disabled", async () => {
+        logIn();
+        mocks.getUserSettings.mockResolvedValue({ data: { beta_version: false }, status: 200 });
+        mocks.query = { tentative: FUNDED_PURCHASE.tentative_id };
+        mocks.getDirectFiatTentative.mockResolvedValue({ data: FUNDED_PURCHASE, status: 200 });
+        renderWithTamagui(<SwapsPage />);
+        expect(await screen.findByText("test.receiver.alias")).toBeInTheDocument();
+        expect(mocks.getDirectFiatTentative).toHaveBeenCalledWith(FUNDED_PURCHASE.tentative_id);
+        expect(mocks.createCryptoPurchaseTentative).not.toHaveBeenCalled();
+        expect(mocks.requestDirectFiatFunding).not.toHaveBeenCalled();
     });
 
     it("shows ARS and the close button when logged in; the X goes home", async () => {
@@ -495,8 +552,23 @@ describe("SwapsPage — ARS legs", () => {
         expect(screen.queryByText(/Sin KYC, sin custodia/)).not.toBeInTheDocument();
     });
 
+    it("shows the swap id as the payment reference, never the Fiwind movement id", async () => {
+        mocks.query = { id: SWAP_ID };
+        mocks.getSwap.mockResolvedValue({
+            data: { ...ARS_SWAP, status: "SENDING", deposit_txid: "fiwind:121531037" },
+            status: 200,
+        });
+        renderWithTamagui(<SwapsPage />);
+
+        expect(await screen.findByText("Referencia del pago")).toBeInTheDocument();
+        expect(screen.queryByText(/fiwind/)).not.toBeInTheDocument();
+        // TxidRow shortens to 10 + 8 characters; the order id header uses 8 + 6.
+        expect(screen.getByText("11111111-2…55555555")).toBeInTheDocument();
+    });
+
     it("sells BTC Lightning for ARS through a fast_fiat_transfer tentative", async () => {
         logIn();
+        mocks.getUserSettings.mockResolvedValue({ data: { beta_version: false }, status: 200 });
         const user = userEvent.setup();
         mocks.getDirectFiatQuote.mockResolvedValue({ data: FIAT_QUOTE, status: 200 });
         mocks.createDirectFiatTentative.mockResolvedValue({ data: TENTATIVE, status: 201 });
