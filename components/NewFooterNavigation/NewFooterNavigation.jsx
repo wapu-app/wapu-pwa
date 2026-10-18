@@ -11,6 +11,7 @@ import TamaguiSendModal from "../TamaguiSendModal";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import { usePathname } from "next/navigation";
+import styles from "./NewFooterNavigation.module.css";
 export default function NewFooterNavigation() {
     const router = useRouter();
     const pathname = usePathname();
@@ -33,7 +34,7 @@ export default function NewFooterNavigation() {
 
     return (
         <XStack
-            width="$width100"
+            className={styles.navigation}
             height={"8%"}
             display="flex"
             justifyContent="space-around"

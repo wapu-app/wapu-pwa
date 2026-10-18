@@ -34,17 +34,17 @@ export default function BuyBitcoinCard() {
                     <Image
                         src={argentinaFlag}
                         alt="ARS"
-                        style={{ width: "20px", height: "20px" }}
+                        style={{ width: "24px", height: "24px" }}
                     />
                     <Image
                         src={arrowsIcon}
                         alt=""
-                        style={{ width: "16px", height: "16px" }}
+                        style={{ width: "24px", height: "24px" }}
                     />
                     <Image
                         src={bitcoinIcon}
                         alt="Bitcoin"
-                        style={{ width: "20px", height: "20px" }}
+                        style={{ width: "24px", height: "24px" }}
                     />
                 </XStack>
             </YStack>
@@ -53,6 +53,7 @@ export default function BuyBitcoinCard() {
                 backgroundColor={"$pink500"}
                 color={"$neutral12"}
                 borderRadius={"$3.5"}
+                height={32}
                 paddingHorizontal={"$4"}
                 fontWeight={"$3"}
                 pressStyle={{ opacity: 0.85, backgroundColor: "$pink500" }}

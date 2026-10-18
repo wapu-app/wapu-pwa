@@ -72,13 +72,6 @@ export default function ExchangeRateCard({ onPress }) {
                         ${user.rateUsdtArsBuy || "---"}
                     </Paragraph>
                 </XStack>
-                <Paragraph
-                    color={"$neutral11"}
-                    fontSize={"$2"}
-                    fontWeight={"$1"}
-                >
-                    Buy Price
-                </Paragraph>
             </YStack>
         </XStack>
     );

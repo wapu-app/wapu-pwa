@@ -11,7 +11,7 @@ import TamaguiProgressBar from "../../components/TamaguiProgressBar";
 import { useUserContext } from "../../context/userContext";
 import Referral from "../../components/Referral/referral";
 import { useRouter } from "next/router";
-import { getSettings } from "../../api/api";
+import { getSettings, getUserSettings } from "../../api/api";
 import NewInfoCard from "../../components/NewInfoCard/NewInfoCard";
 import ExchangeRateCard from "../../components/ExchangeRateCard/ExchangeRateCard";
 import BuyBitcoinCard from "../../components/BuyBitcoinCard/BuyBitcoinCard";
@@ -24,6 +24,7 @@ export default function index() {
 
     const [isReferralOpen, setIsReferralOpen] = useState(false);
     const [externalKycUrl, setExternalKycUrl] = useState("");
+    const [betaEnabled, setBetaEnabled] = useState(false);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const openModal = () => setIsModalOpen(true);
@@ -55,6 +56,27 @@ export default function index() {
             setExternalKycUrl(settings.external_kyc_url);
         }
         fetchSettings();
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        async function fetchBetaSettings() {
+            try {
+                const { data, status } = await getUserSettings();
+                if (!cancelled) {
+                    setBetaEnabled(status === 200 && data?.beta_version === true);
+                }
+            } catch (error) {
+                console.error("Failed to fetch beta settings:", error);
+                if (!cancelled) {
+                    setBetaEnabled(false);
+                }
+            }
+        }
+        fetchBetaSettings();
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     return (
@@ -178,8 +200,7 @@ export default function index() {
             )}
 
             <ExchangeRateCard onPress={() => setIsCalculatorOpen(true)} />
-            {/* `/features swaps_home_card` in Telegram. Hidden until the user loads. */}
-            {user.swapsHomeCard === true ? <BuyBitcoinCard /> : null}
+            {betaEnabled ? <BuyBitcoinCard /> : null}
         </YStack>
     );
 }
