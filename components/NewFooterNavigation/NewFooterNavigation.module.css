@@ -1,0 +1,11 @@
+.navigation {
+    width: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+@media (min-width: 1024px) {
+    .navigation {
+        width: calc(35% - 3rem);
+    }
+}
