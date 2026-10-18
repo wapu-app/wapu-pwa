@@ -101,6 +101,11 @@ directly. "Start a new swap" resets state and pushes `/swaps`.
 
 ## ARS legs (logged in only)
 
+The home "Buy Bitcoin without KYC" card, including its "Swaps" button, is
+visible only after `GET /users/user-settings` confirms `beta_version: true`.
+Loading, missing settings and failed requests keep the entire card hidden.
+The legacy `swaps_home_card` feature flag no longer controls this home entry.
+
 `ARS` and `BTC_LIGHTNING` as an input need a session. The page resolves the
 gate after mount with `resolveLoggedIn()`: cookie `isLoggedIn` +
 `!isAuthExpired()` (same test as the layout), plus one refresh when a session
