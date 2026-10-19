@@ -186,6 +186,7 @@ describe("newWithdrawal flow", () => {
         expect(nextButton).toBeEnabled();
 
         await user.click(nextButton);
+        expect(screen.getByText("0xabc123")).toBeVisible();
         await user.click(screen.getByRole("button", { name: /^confirm$/i }));
 
         await waitFor(() => {
@@ -208,38 +209,44 @@ describe("newWithdrawal flow", () => {
         });
     });
 
-    it("uses the Wapu user transfer API and routes to completed transactions", async () => {
-        const user = userEvent.setup();
-        renderWithTamagui(<NewWithdrawalPage />);
+    it.each(["grace.wapu", "grace.wapu@wapu.app"])(
+        "shows the full Wapu address for %s without changing the transfer payload",
+        async (address) => {
+            const user = userEvent.setup();
+            renderWithTamagui(<NewWithdrawalPage />);
 
-        await completeRecipientStep(user, /^wapu users$/i, "grace.wapu");
+            await completeRecipientStep(user, /^wapu users$/i, address);
 
-        expect(screen.getAllByText("0 USDT")).toHaveLength(2);
-        expect(
-            screen.getByText(/you have to send minimum 10 usdt/i)
-        ).toBeVisible();
+            expect(screen.getAllByText("0 USDT")).toHaveLength(2);
+            expect(
+                screen.getByText(/you have to send minimum 10 usdt/i)
+            ).toBeVisible();
 
-        await user.type(screen.getByPlaceholderText(/enter amount/i), "15");
-        await user.click(screen.getByRole("button", { name: /^next$/i }));
-        await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+            await user.type(screen.getByPlaceholderText(/enter amount/i), "15");
+            await user.click(screen.getByRole("button", { name: /^next$/i }));
+            expect(screen.getByText("grace.wapu@wapu.app")).toBeVisible();
+            await user.click(
+                screen.getByRole("button", { name: /^confirm$/i })
+            );
 
-        await waitFor(() => {
-            expect(postInnerTransfer).toHaveBeenCalledWith({
-                address: "grace.wapu",
-                amount: "15",
-                currency: "USDT",
-                network: "inner_transfer",
-                receiver_name: "Grace Hopper",
-                receiver_username: "grace.wapu",
+            await waitFor(() => {
+                expect(postInnerTransfer).toHaveBeenCalledWith({
+                    address,
+                    amount: "15",
+                    currency: "USDT",
+                    network: "inner_transfer",
+                    receiver_name: "Grace Hopper",
+                    receiver_username: address,
+                });
             });
-        });
-        expect(postWithdrawal).not.toHaveBeenCalled();
-        expect(routerMock.push).toHaveBeenCalledWith({
-            pathname: "/newTransactionComplete",
-            query: {
-                id: "inner-tx-456",
-                transaction_type: "send_digital",
-            },
-        });
-    });
+            expect(postWithdrawal).not.toHaveBeenCalled();
+            expect(routerMock.push).toHaveBeenCalledWith({
+                pathname: "/newTransactionComplete",
+                query: {
+                    id: "inner-tx-456",
+                    transaction_type: "send_digital",
+                },
+            });
+        }
+    );
 });
