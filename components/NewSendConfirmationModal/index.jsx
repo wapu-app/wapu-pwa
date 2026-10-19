@@ -10,6 +10,7 @@ const NewSendConfirmationModal = ({
     network,
     receiverName,
     receiverAccount,
+    isWapuUser = false,
     fee,
     exchangeRate,
     totalAmount,
@@ -191,8 +192,12 @@ const NewSendConfirmationModal = ({
                                     size={"$5"}
                                     textAlign="left"
                                 >
-                                    {receiverAccount &&
-                                    receiverAccount.length > 25
+                                    {isWapuUser && receiverAccount
+                                        ? receiverAccount.endsWith("@wapu.app")
+                                            ? receiverAccount
+                                            : `${receiverAccount}@wapu.app`
+                                        : receiverAccount &&
+                                          receiverAccount.length > 25
                                         ? `${receiverAccount.slice(
                                               0,
                                               10

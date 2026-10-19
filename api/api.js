@@ -197,7 +197,10 @@ export async function getProfile() {
 }
 
 export async function getVerifyCode(code) {
-    return await apiRequest({ endpoint: "/users/verify-email/" + code });
+    return await apiRequest({
+        endpoint: "/users/verify-email/" + code,
+        requiresAuth: false,
+    });
 }
 
 export async function updateProfile(profileData) {
@@ -294,6 +297,7 @@ export async function sendVerificationEmail(email) {
         endpoint: "/users/send-verification-email",
         method: "POST",
         body: { email },
+        requiresAuth: false,
     });
 }
 

@@ -379,6 +379,7 @@ export default function NewWithdrawal() {
                     fee={networkFeeMessage}
                     receiverName={receiverName}
                     receiverAccount={address}
+                    isWapuUser={blockchain.id === "inner_transfer"}
                     onConfirm={handleWithdrawal}
                     currency={currency}
                     network={blockchain.name}
