@@ -2,7 +2,11 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import NewWithdrawalPage from "../../../pages/newWithdrawal";
-import { postInnerTransfer, postWithdrawal } from "../../../api/api";
+import {
+    getAutoWithdrawAvailability,
+    postInnerTransfer,
+    postWithdrawal,
+} from "../../../api/api";
 import { useUserContext } from "../../../context/userContext";
 import { renderWithTamagui } from "../../test-utils";
 
@@ -20,6 +24,7 @@ vi.mock("../../../context/userContext", () => ({
 }));
 
 vi.mock("../../../api/api", () => ({
+    getAutoWithdrawAvailability: vi.fn(),
     postInnerTransfer: vi.fn(),
     postWithdrawal: vi.fn(),
 }));
@@ -104,6 +109,10 @@ function mockWithdrawalPage(): void {
     vi.mocked(postWithdrawal).mockResolvedValue({
         data: { transaction_id: "withdraw-tx-123" },
         status: 201,
+    });
+    vi.mocked(getAutoWithdrawAvailability).mockResolvedValue({
+        data: { visible: false, available: false },
+        status: 200,
     });
     vi.mocked(postInnerTransfer).mockResolvedValue({
         data: { transaction_id: "inner-tx-456" },
@@ -240,6 +249,141 @@ describe("newWithdrawal flow", () => {
                 id: "inner-tx-456",
                 transaction_type: "send_digital",
             },
+        });
+    });
+
+    describe("automatic withdraw label", () => {
+        const AUTO_LABEL = /automatic withdraw: available/i;
+        const NOT_AUTO_LABEL = /automatic withdraw: not available/i;
+
+        async function openAmountStep(
+            user: ReturnType<typeof userEvent.setup>,
+            networkName: RegExp,
+            address: string
+        ): Promise<void> {
+            await completeRecipientStep(user, networkName, address);
+        }
+
+        it("shows the available label and debounces the request by 500 ms", async () => {
+            vi.mocked(getAutoWithdrawAvailability).mockResolvedValue({
+                data: { visible: true, available: true },
+                status: 200,
+            });
+            const user = userEvent.setup();
+            renderWithTamagui(<NewWithdrawalPage />);
+            await openAmountStep(user, /^polygon$/i, "0xabc123");
+            await user.type(screen.getByPlaceholderText(/enter amount/i), "20");
+
+            expect(getAutoWithdrawAvailability).not.toHaveBeenCalled();
+            expect(
+                await screen.findByText(AUTO_LABEL, undefined, {
+                    timeout: 2000,
+                })
+            ).toBeVisible();
+            expect(getAutoWithdrawAvailability).toHaveBeenCalledTimes(1);
+            expect(getAutoWithdrawAvailability).toHaveBeenCalledWith(
+                "POLYGON",
+                "0xabc123",
+                "20"
+            );
+        });
+
+        it("shows the not available label when visible but not available", async () => {
+            vi.mocked(getAutoWithdrawAvailability).mockResolvedValue({
+                data: { visible: true, available: false },
+                status: 200,
+            });
+            const user = userEvent.setup();
+            renderWithTamagui(<NewWithdrawalPage />);
+            await openAmountStep(user, /^ethereum$/i, "0xabc123");
+            await user.type(screen.getByPlaceholderText(/enter amount/i), "20");
+
+            expect(
+                await screen.findByText(NOT_AUTO_LABEL, undefined, {
+                    timeout: 2000,
+                })
+            ).toBeVisible();
+        });
+
+        it("hides the label when not visible", async () => {
+            const user = userEvent.setup();
+            renderWithTamagui(<NewWithdrawalPage />);
+            await openAmountStep(user, /^polygon$/i, "0xabc123");
+            await user.type(screen.getByPlaceholderText(/enter amount/i), "20");
+
+            await waitFor(
+                () => expect(getAutoWithdrawAvailability).toHaveBeenCalled(),
+                { timeout: 2000 }
+            );
+            expect(screen.queryByText(/automatic withdraw/i)).toBeNull();
+        });
+
+        it("hides the label on a non-2xx response", async () => {
+            vi.mocked(getAutoWithdrawAvailability).mockResolvedValue({
+                data: { visible: true, available: true },
+                status: 500,
+            });
+            const user = userEvent.setup();
+            renderWithTamagui(<NewWithdrawalPage />);
+            await openAmountStep(user, /^polygon$/i, "0xabc123");
+            await user.type(screen.getByPlaceholderText(/enter amount/i), "20");
+
+            await waitFor(
+                () => expect(getAutoWithdrawAvailability).toHaveBeenCalled(),
+                { timeout: 2000 }
+            );
+            expect(screen.queryByText(/automatic withdraw/i)).toBeNull();
+        });
+
+        it("hides the label when the request throws", async () => {
+            vi.mocked(getAutoWithdrawAvailability).mockRejectedValue(
+                new Error("network down")
+            );
+            const user = userEvent.setup();
+            renderWithTamagui(<NewWithdrawalPage />);
+            await openAmountStep(user, /^polygon$/i, "0xabc123");
+            await user.type(screen.getByPlaceholderText(/enter amount/i), "20");
+
+            await waitFor(
+                () => expect(getAutoWithdrawAvailability).toHaveBeenCalled(),
+                { timeout: 2000 }
+            );
+            expect(screen.queryByText(/automatic withdraw/i)).toBeNull();
+        });
+
+        it("does not request availability for Wapu users transfers", async () => {
+            const user = userEvent.setup();
+            renderWithTamagui(<NewWithdrawalPage />);
+            await openAmountStep(user, /^wapu users$/i, "grace.wapu");
+            await user.type(screen.getByPlaceholderText(/enter amount/i), "20");
+            await new Promise((resolve) => setTimeout(resolve, 700));
+
+            expect(getAutoWithdrawAvailability).not.toHaveBeenCalled();
+        });
+    });
+
+    it("adds auto=1 to the pending query when the withdrawal is automatic", async () => {
+        vi.mocked(postWithdrawal).mockResolvedValue({
+            data: { transaction_id: "withdraw-tx-123", auto_withdraw: "queued" },
+            status: 201,
+        });
+        const user = userEvent.setup();
+        renderWithTamagui(<NewWithdrawalPage />);
+
+        await completeRecipientStep(user, /^ethereum$/i, "0xabc123");
+        await user.type(screen.getByPlaceholderText(/enter amount/i), "20");
+        await user.click(screen.getByRole("button", { name: /^next$/i }));
+        await user.click(screen.getByRole("button", { name: /^confirm$/i }));
+
+        await waitFor(() => {
+            expect(routerMock.push).toHaveBeenCalledWith({
+                pathname: "/newTransactionPending",
+                query: {
+                    id: "withdraw-tx-123",
+                    transaction_type: "withdraw",
+                    auto: "1",
+                },
+            });
         });
     });
 });
