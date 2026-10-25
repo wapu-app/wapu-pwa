@@ -193,7 +193,9 @@ const NewSendConfirmationModal = ({
                                     textAlign="left"
                                 >
                                     {isWapuUser && receiverAccount
-                                        ? receiverAccount.endsWith("@wapu.app")
+                                        ? receiverAccount
+                                              .toLowerCase()
+                                              .endsWith("@wapu.app")
                                             ? receiverAccount
                                             : `${receiverAccount}@wapu.app`
                                         : receiverAccount &&
