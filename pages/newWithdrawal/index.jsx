@@ -12,9 +12,16 @@ import WarningIcon from "../../public/warning_icon.svg";
 import { useUserContext } from "../../context/userContext";
 import { isValidAmount } from "../../utils/validations";
 import NewSendConfirmationModal from "../../components/NewSendConfirmationModal";
-import { postInnerTransfer, postWithdrawal } from "../../api/api";
+import {
+    getAutoWithdrawAvailability,
+    postInnerTransfer,
+    postWithdrawal,
+} from "../../api/api";
 import TamaguiNumpad from "../../components/TamaguiNumpad";
 import useAmountNumpad from "../../hooks/useAmountNumpad";
+
+const AUTO_WITHDRAW_DEBOUNCE_MS = 500;
+const AUTO_WITHDRAW_NETWORKS = ["POLYGON", "ETHEREUM"];
 
 export default function NewWithdrawal() {
     const { numpadAvailable, numpadActive, toggleNumpad } = useAmountNumpad();
@@ -35,6 +42,7 @@ export default function NewWithdrawal() {
     const [networkFeeMessage, setNetworkFeeMessage] = useState("");
     const [errorModalState, setErrorModalState] = useState(false);
     const [errorMessage, setErrorMessage] = useState(null);
+    const [autoAvailability, setAutoAvailability] = useState(null);
 
     const handleReceiverNameChange = (value) => {
         setReceiverName(value);
@@ -141,6 +149,7 @@ export default function NewWithdrawal() {
                     query: {
                         id: data.transaction_id,
                         transaction_type: "withdraw",
+                        ...(data.auto_withdraw ? { auto: "1" } : {}),
                     },
                 });
             } else if (
@@ -192,6 +201,38 @@ export default function NewWithdrawal() {
         getBlockchainsOptions();
         setMinimumUSDT(user.minimumWithdrawalAmountUsdt);
     }, [user]);
+
+    useEffect(() => {
+        setAutoAvailability(null);
+        const network = String(blockchain.id || "").toUpperCase();
+        if (
+            step !== 2 ||
+            !AUTO_WITHDRAW_NETWORKS.includes(network) ||
+            !address ||
+            !amount
+        ) {
+            return undefined;
+        }
+        let cancelled = false;
+        const timer = setTimeout(async () => {
+            try {
+                const res = await getAutoWithdrawAvailability(
+                    network,
+                    address,
+                    amount
+                );
+                if (!cancelled && res.status >= 200 && res.status < 300) {
+                    setAutoAvailability(res.data);
+                }
+            } catch (error) {
+                // The label is optional: hide it on any failure.
+            }
+        }, AUTO_WITHDRAW_DEBOUNCE_MS);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [step, blockchain.id, address, amount]);
 
     return (
         <YStack
@@ -346,6 +387,21 @@ export default function NewWithdrawal() {
                             {receiveAmount ? receiveAmount : 0} USDT
                         </Paragraph>
                     </XStack>
+                    {autoAvailability?.visible && (
+                        <Paragraph
+                            color={
+                                autoAvailability.available
+                                    ? "$semanticGreen"
+                                    : "$neutral11"
+                            }
+                            weight={"$2"}
+                            size={"$3"}
+                        >
+                            {autoAvailability.available
+                                ? "Automatic withdraw: available"
+                                : "Automatic withdraw: not available"}
+                        </Paragraph>
+                    )}
                     <YStack
                         backgroundColor={"$neutral3"}
                         padding={"$4"}

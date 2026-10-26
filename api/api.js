@@ -558,6 +558,18 @@ export async function getSwapQuote(from, to, amount, side = "in") {
     });
 }
 
+export async function getAutoWithdrawAvailability(network, address, amount) {
+    const query = new URLSearchParams({
+        network: network,
+        address: address,
+        amount: String(amount),
+    });
+
+    return await apiRequest({
+        endpoint: `/wallet/withdraw/auto-availability?${query.toString()}`,
+    });
+}
+
 export async function createSwap(swapData) {
     const response = await apiRequest({
         endpoint: "/swaps",
