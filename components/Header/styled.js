@@ -4,10 +4,6 @@ export const CustomHeader = styled.header`
     padding-top: 2.5rem;
 `;
 
-export const CustomHelpButton = styled.header`
-    padding-top: 2.5rem;
-`;
-
 export const Container = styled.div`
     width: 100%;
     display: flex;

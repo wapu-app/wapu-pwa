@@ -5,7 +5,6 @@ import TamaguiButton from "../../components/TamaguiButton";
 import TamaguiSendModal from "../../components/TamaguiSendModal";
 import depositIcon from "../../public/icons/Ic_Transaction_Black/Deposit.svg";
 import SendIcon from "../../public/icons/Ic_Transaction_Black/Send.svg";
-import QRIcon from "../../public/icons/Ic_Transaction_Black/QRPay.svg";
 import EarnReferral from "../../public/icons/Ic_Transaction_Black/EarnReferral.svg";
 import TamaguiProgressBar from "../../components/TamaguiProgressBar";
 import { useUserContext } from "../../context/userContext";
@@ -31,10 +30,6 @@ export default function index() {
     const closeModal = () => setIsModalOpen(false);
 
     const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
-
-    const handleQRPay = () => {
-        router.push("/qrPayment");
-    };
 
     const handleEarn = () => {
         setIsReferralOpen(true);
@@ -120,18 +115,6 @@ export default function index() {
                     gap={"$2.5"}
                     onClick={handleDeposit}
                 />
-                {user.qrPayment && (
-                    <TamaguiIconButton
-                        icon={QRIcon}
-                        backgroundColor={"$pink500"}
-                        size={"48px"}
-                        label={"QR Pay"}
-                        fontSizeLabel={"$5"}
-                        colorLabel={"$neutral12"}
-                        gap={"$2.5"}
-                        onClick={handleQRPay}
-                    />
-                )}
                 <TamaguiIconButton
                     icon={SendIcon}
                     backgroundColor={"$pink500"}

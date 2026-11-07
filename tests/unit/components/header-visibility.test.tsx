@@ -21,14 +21,9 @@ vi.mock("../../../components/MediaIcons", () => ({
     default: () => null,
 }));
 
-vi.mock("../../../components/HelpButton", () => ({
-    default: () => <button type="button">help</button>,
-}));
-
 const renderAt = (pathname: string) => {
     vi.mocked(usePathname).mockReturnValue(pathname);
     vi.mocked(useUserContext).mockReturnValue({
-        setHelpModalState: vi.fn(),
     });
     renderWithTamagui(<Header />);
 };
@@ -63,10 +58,5 @@ describe("Header", () => {
         expect(
             screen.queryByTestId("account-menu-trigger")
         ).not.toBeInTheDocument();
-    });
-
-    it("shows the help button only on the QR payment route", () => {
-        renderAt("/qrPayment");
-        expect(screen.getByRole("button", { name: "help" })).toBeInTheDocument();
     });
 });
