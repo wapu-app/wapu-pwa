@@ -1,148 +1,254 @@
-import { Button } from "../../components/Button";
-import {
-    CustomContainer,
-    CustomText,
-    CustomTitle,
-    CenterContainer,
-    ButtonContainer,
-    CustomModal,
-    ModalContainer,
-    Form,
-    customStyles,
-} from "./styled";
-import { CustomInput } from "../../components/Input";
-import ErrorModal from "../../components/ErrorModal";
+import Head from "next/head";
 import { useRouter } from "next/router";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import {
+    CheckIcon,
+    EnvelopeIcon,
+    ExclamationTriangleIcon,
+} from "@heroicons/react/24/outline";
+import { H1, Paragraph, YStack } from "tamagui";
+import TamaguiButton from "../../components/TamaguiButton";
+import TamaguiInput from "../../components/TamaguiInput";
 import { getVerifyCode, sendVerificationEmail } from "../../api/api";
 
-export default function verifyEmail() {
-    const [verificationStatus, setVerificationStatus] = useState(null);
-    const [message, setMessage] = useState(null);
-    const [modalIsOpen, setModalIsOpen] = useState(false);
-    const [email, setEmail] = useState("");
-    const [errorMessage, setErrorMessage] = useState(null);
-    const [errorModalState, setErrorModalState] = useState(false);
-    const [verificationSent, setVerificationSent] = useState(true);
+const CONTENT = {
+    loading: {
+        title: "Verifying your email",
+        description: "Just a moment while we confirm your email address.",
+    },
+    success: {
+        title: "Email verified!",
+        description:
+            "Your email is confirmed. You're ready to continue with Wapu.",
+    },
+    invalid: {
+        title: "Let's try a new link",
+        description:
+            "This verification link has expired or is invalid. Request a new one to confirm your email.",
+    },
+    error: {
+        title: "We couldn't verify your email",
+        description:
+            "There was a connection problem. Please try again in a moment.",
+    },
+    resend: {
+        title: "Get a new verification link",
+        description:
+            "Enter the email address you used to sign up and we'll send you a new link.",
+    },
+    sent: {
+        title: "Check your inbox",
+        description:
+            "We've sent you a new verification link. Open it to confirm your email. If you don't see it, check your spam folder.",
+    },
+};
 
-    const handleEmailChange = (e) => {
-        setEmail(e.target.value);
-    };
-
+export default function VerifyEmail() {
     const router = useRouter();
+    const { code } = router.query;
+    const [status, setStatus] = useState("loading");
+    const [attempt, setAttempt] = useState(0);
+    const [email, setEmail] = useState("");
+    const [sendError, setSendError] = useState("");
+    const [isSending, setIsSending] = useState(false);
 
     useEffect(() => {
-        const verifyCode = async (code) => {
-            const response = await getVerifyCode(code);
-            console.log("data:", response);
-            if (response.status == "200") {
-                setVerificationStatus(true);
-                setMessage("Email verification complete!");
-            } else {
-                setVerificationStatus(false);
-                setMessage(
-                    response.data.error
-                        ? response.data.error
-                        : "There has been an error. Please try again or contact support."
-                );
+        if (!router.isReady) return;
+        if (typeof code !== "string" || !code.trim()) {
+            setStatus("invalid");
+            return;
+        }
+
+        let cancelled = false;
+        setStatus("loading");
+        const verify = async () => {
+            try {
+                const response = await getVerifyCode(code);
+                if (!cancelled) {
+                    setStatus(
+                        response.status === 200
+                            ? "success"
+                            : response.status >= 500
+                            ? "error"
+                            : "invalid"
+                    );
+                }
+            } catch {
+                if (!cancelled) setStatus("error");
             }
-            
         };
+        verify();
+        return () => {
+            cancelled = true;
+        };
+    }, [router.isReady, code, attempt]);
 
-        if (router.asPath !== router.route) {
-            if (typeof router.query.code !== "undefined") {
-                verifyCode(router.query.code);
-            } else {
-                setVerificationStatus(false);
-                setMessage(
-                    "There has been an error. Please try again or contact support."
+    const sendLink = async () => {
+        if (isSending) return;
+        const address = email.trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) {
+            setSendError("Please enter a valid email address.");
+            return;
+        }
+        setIsSending(true);
+        setSendError("");
+        try {
+            const response = await sendVerificationEmail(address);
+            if (response.status !== 200) {
+                setSendError(
+                    "We couldn't send the link. Please try again in a moment."
                 );
+                return;
             }
-        } else {
-            setVerificationStatus(false);
-            setMessage(
-                "There has been an error. Please try again or contact support."
+            setStatus("sent");
+        } catch {
+            setSendError(
+                "We couldn't send the link. Check your connection and try again."
             );
-        }
-    }, [router]);
-
-    const backHome = () => {
-        router.push("/home");
-    };
-
-    const sendVerificationCode = async (e) => {
-        e.preventDefault();
-        const response = await sendVerificationEmail(email)
-        if (response.status == 200) {
-            setErrorMessage(
-                "Verification link sent to the email. Please check your inbox."
-            );
-            setVerificationSent(true);
-        } else {
-            console.log("error ")
-            if (response.status === 400) {
-                const data = await response.data;
-                setErrorMessage(data.error);
-            } else {
-                setErrorMessage("Please try again later or contact support");
-            }
-            setVerificationSent(false);
-        }
-        setErrorModalState(true);
-    };
-
-    const handleCloseErrorModal = () => {
-        setErrorModalState(false);
-        if (verificationSent) {
-            router.push("/home");
+        } finally {
+            setIsSending(false);
         }
     };
+
+    const content = CONTENT[status];
+    const StatusIcon =
+        status === "success"
+            ? CheckIcon
+            : ["invalid", "error"].includes(status)
+            ? ExclamationTriangleIcon
+            : EnvelopeIcon;
 
     return (
-        <CustomContainer>
-            <CustomModal
-                isOpen={modalIsOpen}
-                onRequestClose={() => setModalIsOpen(false)}
-                style={customStyles}
+        <>
+            <Head>
+                <title>{content.title} | Wapu</title>
+            </Head>
+            <YStack
+                width="$width90"
+                maxWidth={440}
+                paddingVertical="$6"
+                gap="$8"
+                flexShrink={0}
             >
-                <CustomTitle>Verify Email</CustomTitle>
-                <ModalContainer>
-                    <Form onSubmit={sendVerificationCode}>
-                        <CustomInput
-                            label={"Email"}
-                            name={"email"}
-                            value={email}
-                            type={"email"}
-                            onChange={handleEmailChange}
-                            required
-                            autoComplete={"off"}
+                <YStack
+                    alignItems="center"
+                    gap="$5"
+                    role="status"
+                    aria-live="polite"
+                    aria-busy={status === "loading"}
+                >
+                    <YStack
+                        width={88}
+                        height={88}
+                        borderRadius="$8"
+                        backgroundColor="$neutral3"
+                        color={status === "success" ? "$brandMint" : "$pink300"}
+                        alignItems="center"
+                        justifyContent="center"
+                        aria-hidden="true"
+                    >
+                        <StatusIcon width={40} height={40} />
+                    </YStack>
+                    <YStack gap="$3.5" alignItems="center">
+                        <H1
+                            fontFamily="$heading"
+                            fontSize="$5"
+                            fontWeight="$2"
+                            lineHeight={36}
+                            color="$neutral13"
+                            textAlign="center"
+                        >
+                            {content.title}
+                        </H1>
+                        <Paragraph
+                            fontFamily="$body"
+                            fontSize="$3"
+                            lineHeight={24}
+                            fontWeight="400"
+                            color="$neutral12"
+                            textAlign="center"
+                        >
+                            {content.description}
+                        </Paragraph>
+                    </YStack>
+                </YStack>
+                <YStack gap="$3.5">
+                    {status === "resend" && (
+                        <YStack gap="$3.5">
+                            <TamaguiInput
+                                value={email}
+                                onChange={setEmail}
+                                label="Email address"
+                                aria-label="Email address"
+                                placeholder="Enter your email address"
+                                type="email"
+                                autoComplete="email"
+                                autoCapitalize="none"
+                                error={!!sendError}
+                                aria-invalid={!!sendError}
+                                aria-describedby={
+                                    sendError
+                                        ? "verification-send-error"
+                                        : undefined
+                                }
+                                onKeyPress={(event) => {
+                                    if (event.key === "Enter") {
+                                        event.preventDefault();
+                                        sendLink();
+                                    }
+                                }}
+                            />
+                            {sendError && (
+                                <Paragraph
+                                    id="verification-send-error"
+                                    role="alert"
+                                    color="$pink200"
+                                    fontSize="$3"
+                                >
+                                    {sendError}
+                                </Paragraph>
+                            )}
+                            <TamaguiButton
+                                text={
+                                    isSending
+                                        ? "Sending link..."
+                                        : "Send verification link"
+                                }
+                                onClick={sendLink}
+                                isDisabled={isSending}
+                                isLoading={isSending}
+                            />
+                        </YStack>
+                    )}
+                    {status === "success" && (
+                        <TamaguiButton
+                            text="Continue to Wapu"
+                            onClick={() => router.push("/home")}
                         />
-                        <Button type="submit" text="Send verification code" />
-                    </Form>
-                </ModalContainer>
-            </CustomModal>
-
-            <CustomTitle>Email Verification</CustomTitle>
-            <CenterContainer>
-                <CustomText>{message}</CustomText>
-            </CenterContainer>
-            {verificationStatus ? (
-                <ButtonContainer>
-                    <Button text="Home" onClick={backHome} />
-                </ButtonContainer>
-            ) : (
-                <ButtonContainer>
-                    <Button
-                        text="Send new verification code"
-                        onClick={() => setModalIsOpen(true)}
-                    />
-                </ButtonContainer>
-            )}
-            <ErrorModal
-                message={errorMessage}
-                state={errorModalState}
-                errorModalOnRequestClose={handleCloseErrorModal}
-            />
-        </CustomContainer>
+                    )}
+                    {status === "invalid" && (
+                        <TamaguiButton
+                            text="Get a new link"
+                            onClick={() => setStatus("resend")}
+                        />
+                    )}
+                    {status === "error" && (
+                        <TamaguiButton
+                            text="Try again"
+                            onClick={() => setAttempt((value) => value + 1)}
+                        />
+                    )}
+                    {["invalid", "error", "resend", "sent"].includes(
+                        status
+                    ) && (
+                        <TamaguiButton
+                            text="Back to login"
+                            secondary
+                            onClick={() => router.push("/login")}
+                        />
+                    )}
+                </YStack>
+            </YStack>
+        </>
     );
 }
