@@ -1,11 +1,7 @@
 "use client";
-import { CustomHeader, CustomHelpButton, Container } from "./styled";
+import { CustomHeader, Container } from "./styled";
 import Burger from "../Burger/index";
 import { usePathname } from "next/navigation";
-import HelpButton from "../HelpButton";
-import Icon from "@mdi/react";
-import { mdiHelp } from "@mdi/js";
-import { useUserContext } from "../../context/userContext";
 import MediaIcons from "../MediaIcons";
 
 // Routes that bring their own header (a NewHeaderButton with a back arrow, or
@@ -37,10 +33,7 @@ const HIDDEN_PATHS = [
     "/apiKey",
 ];
 
-const HELP_BUTTON_PATHS = ["/qrPayment"];
-
 export const Header = () => {
-    const { setHelpModalState } = useUserContext();
     const pathname = usePathname();
 
     // Derived, not state: with useState(false) + useEffect the first client
@@ -48,22 +41,10 @@ export const Header = () => {
     // commit — a header flash plus the mount effects Burger carries (getUser,
     // getSettings) firing on every hidden route.
     const headerHidden = HIDDEN_PATHS.includes(pathname);
-    const helpButtonShow = HELP_BUTTON_PATHS.includes(pathname);
 
     return (
         <Container>
-            {helpButtonShow ? (
-                <CustomHelpButton>
-                    <HelpButton
-                        onClick={() => {
-                            setHelpModalState(true);
-                        }}
-                        text={<Icon path={mdiHelp} size={0.8} />}
-                    />
-                </CustomHelpButton>
-            ) : (
-                <div></div>
-            )}
+            <div></div>
             {headerHidden ? (
                 <></>
             ) : (

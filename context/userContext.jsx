@@ -76,7 +76,6 @@ export const UserContextProvider = ({ children }) => {
                             100 || null,
                     minDepositUsdt:
                         userData.data.settings?.min_deposit_usdt || null,
-                    qrPaymentFee: userData.data.settings?.qr_payment_fee,
                     fiatTransferFee: userData.data.settings?.fiat_transfer_fee,
                     fastFiatTransferFee:
                         userData.data.settings?.fast_fiat_transfer_fee,
@@ -122,9 +121,6 @@ export const UserContextProvider = ({ children }) => {
                         : null,
                     pixDeposit: userData.data.settings
                         ? userData.data.settings.features.pix_deposit
-                        : null,
-                    qrPayment: userData.data.settings
-                        ? userData.data.settings.features.qr_payment
                         : null,
                     showRecentFavContacts: userData.data.settings
                         ? userData.data.settings.features.show_recent_fav_contacts

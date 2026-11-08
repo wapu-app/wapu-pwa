@@ -71,7 +71,6 @@ Node ≥ 20, npm ≥ 10 required.
 | `newSend/` | Send crypto flow |
 | `newWithdrawal/` | Withdrawal flow |
 | `innerTransfer/` | Internal transfer |
-| `qrPayment/` | QR code payment scanner |
 | `newMovements/` | Transaction history |
 | `newTransactionDetail/` | Transaction detail view |
 | `newTransactionComplete/` | Post-transaction confirmation |
