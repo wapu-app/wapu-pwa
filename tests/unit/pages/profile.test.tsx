@@ -158,4 +158,36 @@ describe("Profile", () => {
             eligibilityError
         );
     });
+
+    it("renders Telegram read-only and does not send it when saving", async () => {
+        const user = userEvent.setup();
+        vi.mocked(getProfile).mockResolvedValue({
+            data: {
+                email: "satoshi@example.com",
+                network: "bitcoin",
+                npub: "",
+                phone: "",
+                telegram: "@satoshi",
+                username: "satoshi",
+            },
+        });
+
+        renderWithTamagui(<Profile />);
+
+        await waitFor(() => {
+            expect(screen.getByLabelText("Telegram")).toHaveValue("@satoshi");
+        });
+        expect(screen.getByLabelText("Telegram")).toHaveAttribute("readonly");
+        expect(screen.getByText(/contact Support/)).toBeVisible();
+
+        await user.type(screen.getByLabelText("npub"), "npub1example");
+        await user.click(screen.getByRole("button", { name: "Save" }));
+
+        await waitFor(() => {
+            expect(updateProfile).toHaveBeenCalled();
+        });
+        expect(vi.mocked(updateProfile).mock.calls[0][0]).not.toHaveProperty(
+            "telegram"
+        );
+    });
 });
