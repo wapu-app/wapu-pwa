@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { YStack, XStack, Paragraph, Text } from "tamagui";
 import moment from "moment";
+import { QRCodeSVG } from "qrcode.react";
 import NewHeaderButton from "../../components/newHeaderButton";
 import TamaguiButton from "../../components/TamaguiButton";
 import CopyButton from "../../components/CopyButton";
@@ -177,6 +178,22 @@ export default function ApiKey() {
                         Copy this key now and store it somewhere safe. For your
                         security, it won't be shown again.
                     </Paragraph>
+                    <YStack
+                        alignSelf="center"
+                        width="$width100"
+                        maxWidth={360}
+                        padding="$4"
+                        borderRadius="$7"
+                        backgroundColor="#FFFFFF"
+                    >
+                        <QRCodeSVG
+                            value={generatedToken}
+                            size={512}
+                            style={{ width: "100%", height: "auto" }}
+                            aria-label="API key QR code"
+                            title="API key QR code"
+                        />
+                    </YStack>
                     {error && (
                         <Paragraph color="$semanticRed" fontSize="$3">
                             {error}
