@@ -9,7 +9,7 @@ export default function index() {
     const router = useRouter();
     let message = "";
     let header = "";
-    const { id, transaction_type } = router.query;
+    const { id, transaction_type, auto } = router.query;
 
     const handleBackHome = () => {
         router.push("/home");
@@ -29,7 +29,10 @@ export default function index() {
             break;
         case "withdraw":
             header = "Send Digital Dollar";
-            message = "It will take up to 4 hours to be completed";
+            message =
+                auto === "1"
+                    ? "It usually takes about 5 minutes to be completed"
+                    : "It will take up to 4 hours to be completed";
             break;
     }
 

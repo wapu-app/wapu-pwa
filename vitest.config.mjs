@@ -39,6 +39,7 @@ export default defineConfig({
                 "pages/newDepositChoice/index.jsx",
                 "pages/newBlockchainDeposit/index.jsx",
                 "pages/newSend/index.jsx",
+                "pages/newTransactionPending/index.jsx",
                 "pages/newWithdrawal/index.jsx",
                 "pages/swaps/index.jsx",
             ],
