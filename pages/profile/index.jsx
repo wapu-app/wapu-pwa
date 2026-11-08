@@ -62,7 +62,6 @@ export default function Profile() {
 
     const isDirty =
         profile.username !== savedProfile.username ||
-        profile.telegram !== savedProfile.telegram ||
         profile.phone !== savedProfile.phone ||
         profile.npub !== savedProfile.npub;
 
@@ -106,10 +105,6 @@ export default function Profile() {
         setProfile((prev) => ({ ...prev, phone: value }));
     };
 
-    const handleTelegramChange = (value) => {
-        setProfile((prev) => ({ ...prev, telegram: value }));
-    };
-
     const handleNpubChange = (value) => {
         setProfile((prev) => ({ ...prev, npub: value }));
     };
@@ -125,7 +120,6 @@ export default function Profile() {
         try {
             const response = await updateProfile({
                 username: profile.username,
-                telegram: profile.telegram,
                 phone: profile.phone,
                 npub: profile.npub,
                 blockchain: profile.blockchain,
@@ -245,12 +239,17 @@ export default function Profile() {
                         placeholder={"Phone"}
                     />
 
-                    <TamaguiInput
-                        label={"Telegram"}
-                        value={profile.telegram}
-                        onChange={handleTelegramChange}
-                        placeholder={"Telegram"}
-                    />
+                    <YStack gap={"$2"}>
+                        <TamaguiInput
+                            label={"Telegram"}
+                            value={profile.telegram}
+                            editable={false}
+                            placeholder={"Telegram"}
+                        />
+                        <Paragraph color={"$neutral11"} fontSize={"$4"}>
+                            To change your Telegram username, contact Support.
+                        </Paragraph>
+                    </YStack>
 
                     <TamaguiInput
                         label={"npub"}
