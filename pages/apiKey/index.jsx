@@ -5,6 +5,7 @@ import moment from "moment";
 import { QRCodeSVG } from "qrcode.react";
 import NewHeaderButton from "../../components/newHeaderButton";
 import TamaguiButton from "../../components/TamaguiButton";
+import TamaguiInput from "../../components/TamaguiInput";
 import CopyButton from "../../components/CopyButton";
 import { Spinner } from "../../components/CustomSpinner";
 import {
@@ -14,6 +15,23 @@ import {
 } from "../../api/api";
 
 const SUPPORT_URL = "https://wa.me/5491124060850";
+const DEFAULT_LIMIT = 3;
+const LIMIT_NOTE = (limit) =>
+    `You have reached the limit of ${limit} active keys. Delete one to create another.`;
+
+// Older backends only send the summary fields: show them as a single key.
+const getKeys = (status) =>
+    status.keys ||
+    (status.is_active
+        ? [
+              {
+                  id: null,
+                  label: null,
+                  token_prefix: status.token_prefix,
+                  last_used_at: status.last_used_at,
+              },
+          ]
+        : []);
 
 export default function ApiKey() {
     const router = useRouter();
@@ -21,8 +39,10 @@ export default function ApiKey() {
     const [loading, setLoading] = useState(true);
     const [status, setStatus] = useState(null);
     const [generatedToken, setGeneratedToken] = useState(null);
+    const [generatedLabel, setGeneratedLabel] = useState(null);
+    const [label, setLabel] = useState("");
     const [notEnabled, setNotEnabled] = useState(false);
-    const [confirmAction, setConfirmAction] = useState(null); // "regenerate" | "delete"
+    const [confirmAction, setConfirmAction] = useState(null); // id of the key being deleted
     const [error, setError] = useState(null);
 
     const loadStatus = async () => {
@@ -53,28 +73,28 @@ export default function ApiKey() {
     const handleGenerate = async () => {
         setError(null);
         try {
-            const res = await generateApiToken();
+            const res = await generateApiToken(label.trim());
             if (res.status === 201) {
                 setGeneratedToken(res.data.token);
-                setStatus((prev) => ({
-                    ...prev,
-                    token_prefix: res.data.token_prefix,
-                }));
-                setConfirmAction(null);
+                setGeneratedLabel(res.data.label || null);
+                setLabel("");
             } else if (res.status === 403) {
                 setNotEnabled(true);
+            } else if (res.status === 409) {
+                setError(LIMIT_NOTE(res.data?.limit || DEFAULT_LIMIT));
+                await loadStatus();
             } else {
-                setError("Couldn't generate an API key. Please try again.");
+                setError("Couldn't create an API key. Please try again.");
             }
         } catch (e) {
-            setError("Couldn't generate an API key. Please try again.");
+            setError("Couldn't create an API key. Please try again.");
         }
     };
 
-    const handleRevoke = async () => {
+    const handleRevoke = async (id) => {
         setError(null);
         try {
-            const res = await revokeApiToken();
+            const res = await revokeApiToken(id);
             if (res.status === 200) {
                 setConfirmAction(null);
                 await loadStatus();
@@ -89,6 +109,7 @@ export default function ApiKey() {
     const handleRevealDone = async () => {
         setError(null);
         setGeneratedToken(null);
+        setGeneratedLabel(null);
         try {
             await loadStatus();
         } catch (e) {
@@ -143,6 +164,11 @@ export default function ApiKey() {
                     <Paragraph color="$neutral13" fontSize="$4" fontWeight="$2">
                         Your new API key
                     </Paragraph>
+                    {generatedLabel && (
+                        <Paragraph color="$neutral11" fontSize="$3">
+                            {generatedLabel}
+                        </Paragraph>
+                    )}
                     <YStack {...cardProps}>
                         <Paragraph color="$neutral10" fontSize="$2">
                             API key
@@ -204,16 +230,48 @@ export default function ApiKey() {
             );
         }
 
-        if (status && status.is_active) {
+        if (!status) {
             return (
-                <YStack gap="$4" width="$width100">
-                    <YStack {...cardProps}>
+                <Paragraph color="$semanticRed" fontSize="$3">
+                    {error}
+                </Paragraph>
+            );
+        }
+
+        const keys = getKeys(status);
+        const limit = status.limit || DEFAULT_LIMIT;
+        const limitReached = keys.length >= limit;
+
+        return (
+            <YStack gap="$4" width="$width100">
+                {keys.length === 0 && (
+                    <>
+                        <Paragraph
+                            color="$neutral13"
+                            fontSize="$4"
+                            fontWeight="$2"
+                        >
+                            You don't have an active API key
+                        </Paragraph>
+                        <Paragraph color="$neutral11" fontSize="$3">
+                            Create an API key to access the WapuPay API from
+                            your own applications and integrations.
+                        </Paragraph>
+                    </>
+                )}
+                {keys.map((k) => (
+                    <YStack key={k.id ?? "legacy"} {...cardProps}>
                         <XStack justifyContent="space-between" gap="$2">
-                            <Paragraph color="$neutral10" fontSize="$3">
-                                API key
+                            <Paragraph
+                                flex={1}
+                                color="$neutral13"
+                                fontSize="$3"
+                                fontWeight="$2"
+                            >
+                                {k.label || "Unnamed key"}
                             </Paragraph>
                             <Paragraph color="$neutral13" fontSize="$3">
-                                {status.token_prefix}…
+                                {k.token_prefix}…
                             </Paragraph>
                         </XStack>
                         <XStack justifyContent="space-between" gap="$2">
@@ -221,94 +279,65 @@ export default function ApiKey() {
                                 Last used
                             </Paragraph>
                             <Paragraph color="$neutral13" fontSize="$3">
-                                {status.last_used_at
-                                    ? moment(status.last_used_at).format(
+                                {k.last_used_at
+                                    ? moment(k.last_used_at).format(
                                           "MMM Do, YYYY"
                                       )
                                     : "Never used"}
                             </Paragraph>
                         </XStack>
-                    </YStack>
-
-                    {error && (
-                        <Paragraph color="$semanticRed" fontSize="$3">
-                            {error}
-                        </Paragraph>
-                    )}
-
-                    {confirmAction === "regenerate" ? (
-                        <YStack gap="$3" width="$width100">
-                            <Paragraph color="$neutral11" fontSize="$3">
-                                Regenerate the API key? Your current key will
-                                stop working immediately.
-                            </Paragraph>
-                            <TamaguiButton
-                                text="Yes, regenerate"
-                                onClick={handleGenerate}
-                            />
-                            <TamaguiButton
-                                text="Cancel"
-                                secondary
-                                onClick={() => setConfirmAction(null)}
-                            />
-                        </YStack>
-                    ) : confirmAction === "delete" ? (
-                        <YStack gap="$3" width="$width100">
-                            <Paragraph color="$neutral11" fontSize="$3">
-                                Delete the API key? Any application using it
-                                will stop working immediately.
-                            </Paragraph>
-                            <TamaguiButton
-                                text="Yes, delete"
-                                onClick={handleRevoke}
-                            />
-                            <TamaguiButton
-                                text="Cancel"
-                                secondary
-                                onClick={() => setConfirmAction(null)}
-                            />
-                        </YStack>
-                    ) : (
-                        <YStack gap="$3" width="$width100">
-                            <TamaguiButton
-                                text="Regenerate"
-                                secondary
-                                onClick={() => {
-                                    setError(null);
-                                    setConfirmAction("regenerate");
-                                }}
-                            />
+                        {confirmAction === k.id ? (
+                            <YStack gap="$3" width="$width100">
+                                <Paragraph color="$neutral11" fontSize="$3">
+                                    Delete this API key? Any application using
+                                    it will stop working immediately.
+                                </Paragraph>
+                                <TamaguiButton
+                                    text="Yes, delete"
+                                    onClick={() => handleRevoke(k.id)}
+                                />
+                                <TamaguiButton
+                                    text="Cancel"
+                                    secondary
+                                    onClick={() => setConfirmAction(null)}
+                                />
+                            </YStack>
+                        ) : (
                             <TamaguiButton
                                 text="Delete"
                                 secondary
                                 onClick={() => {
                                     setError(null);
-                                    setConfirmAction("delete");
+                                    setConfirmAction(k.id);
                                 }}
                             />
-                        </YStack>
-                    )}
-                </YStack>
-            );
-        }
+                        )}
+                    </YStack>
+                ))}
 
-        // No active token: fresh account or a previously revoked key.
-        return (
-            <YStack gap="$4" width="$width100">
-                <Paragraph color="$neutral13" fontSize="$4" fontWeight="$2">
-                    You don't have an active API key
+                <Paragraph color="$neutral10" fontSize="$3">
+                    {keys.length} of {limit} keys in use
                 </Paragraph>
-                <Paragraph color="$neutral11" fontSize="$3">
-                    Generate an API key to access the WapuPay API from your own
-                    applications and integrations.
-                </Paragraph>
-                {error && (
+                <TamaguiInput
+                    label="Label (optional)"
+                    placeholder="e.g. Production server"
+                    value={label}
+                    onChange={setLabel}
+                    maxLength={64}
+                />
+                {limitReached && (
+                    <Paragraph color="$semanticYellow" fontSize="$3">
+                        {LIMIT_NOTE(limit)}
+                    </Paragraph>
+                )}
+                {error && !(limitReached && error === LIMIT_NOTE(limit)) && (
                     <Paragraph color="$semanticRed" fontSize="$3">
                         {error}
                     </Paragraph>
                 )}
                 <TamaguiButton
-                    text="Generate API key"
+                    text="Create API key"
+                    isDisabled={limitReached}
                     onClick={handleGenerate}
                 />
             </YStack>

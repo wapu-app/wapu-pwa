@@ -42,6 +42,7 @@ export default defineConfig({
                 "pages/newTransactionPending/index.jsx",
                 "pages/newWithdrawal/index.jsx",
                 "pages/swaps/index.jsx",
+                "pages/apiKey/index.jsx",
             ],
         },
     },
