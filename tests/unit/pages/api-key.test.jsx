@@ -110,14 +110,29 @@ describe("ApiKey page", () => {
         expect(await screen.findByText(/reached the limit of 3 active keys/)).toBeTruthy();
     });
 
-    it("falls back to the summary fields on an older backend", async () => {
+    it("does not start in confirmation and Cancel closes it", async () => {
+        getApiTokenStatus.mockResolvedValue(statusOf([key(1, null, "wapu_aaa")]));
+        renderWithTamagui(<ApiKey />);
+
+        await screen.findByText("wapu_aaa…");
+        expect(screen.queryByText("Yes, delete")).toBeNull();
+
+        await userEvent.click(screen.getByText("Delete"));
+        expect(await screen.findByText("Yes, delete")).toBeTruthy();
+        await userEvent.click(screen.getByText("Cancel"));
+        await waitFor(() => expect(screen.queryByText("Yes, delete")).toBeNull());
+        expect(revokeApiToken).not.toHaveBeenCalled();
+    });
+
+    it("renders no cards when the response has no keys list", async () => {
         getApiTokenStatus.mockResolvedValue({
             status: 200,
-            data: { is_active: true, token_prefix: "wapu_old", last_used_at: null },
+            data: { is_active: true, token_prefix: "wapu_old" },
         });
         renderWithTamagui(<ApiKey />);
 
-        expect(await screen.findByText("wapu_old…")).toBeTruthy();
+        expect(await screen.findByText("0 of 3 keys in use")).toBeTruthy();
+        expect(screen.queryByText("wapu_old…")).toBeNull();
     });
 });
 

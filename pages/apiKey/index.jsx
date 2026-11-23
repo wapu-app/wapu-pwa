@@ -19,20 +19,6 @@ const DEFAULT_LIMIT = 3;
 const LIMIT_NOTE = (limit) =>
     `You have reached the limit of ${limit} active keys. Delete one to create another.`;
 
-// Older backends only send the summary fields: show them as a single key.
-const getKeys = (status) =>
-    status.keys ||
-    (status.is_active
-        ? [
-              {
-                  id: null,
-                  label: null,
-                  token_prefix: status.token_prefix,
-                  last_used_at: status.last_used_at,
-              },
-          ]
-        : []);
-
 export default function ApiKey() {
     const router = useRouter();
 
@@ -42,7 +28,7 @@ export default function ApiKey() {
     const [generatedLabel, setGeneratedLabel] = useState(null);
     const [label, setLabel] = useState("");
     const [notEnabled, setNotEnabled] = useState(false);
-    const [confirmAction, setConfirmAction] = useState(null); // id of the key being deleted
+    const [confirmAction, setConfirmAction] = useState({ id: null }); // wrapped so no key id can match the initial state
     const [error, setError] = useState(null);
 
     const loadStatus = async () => {
@@ -96,7 +82,7 @@ export default function ApiKey() {
         try {
             const res = await revokeApiToken(id);
             if (res.status === 200) {
-                setConfirmAction(null);
+                setConfirmAction({ id: null });
                 await loadStatus();
             } else {
                 setError("Couldn't delete the API key. Please try again.");
@@ -238,7 +224,7 @@ export default function ApiKey() {
             );
         }
 
-        const keys = getKeys(status);
+        const keys = status.keys || [];
         const limit = status.limit || DEFAULT_LIMIT;
         const limitReached = keys.length >= limit;
 
@@ -260,7 +246,7 @@ export default function ApiKey() {
                     </>
                 )}
                 {keys.map((k) => (
-                    <YStack key={k.id ?? "legacy"} {...cardProps}>
+                    <YStack key={k.id} {...cardProps}>
                         <XStack justifyContent="space-between" gap="$2">
                             <Paragraph
                                 flex={1}
@@ -286,7 +272,7 @@ export default function ApiKey() {
                                     : "Never used"}
                             </Paragraph>
                         </XStack>
-                        {confirmAction === k.id ? (
+                        {confirmAction.id === k.id ? (
                             <YStack gap="$3" width="$width100">
                                 <Paragraph color="$neutral11" fontSize="$3">
                                     Delete this API key? Any application using
@@ -299,7 +285,7 @@ export default function ApiKey() {
                                 <TamaguiButton
                                     text="Cancel"
                                     secondary
-                                    onClick={() => setConfirmAction(null)}
+                                    onClick={() => setConfirmAction({ id: null })}
                                 />
                             </YStack>
                         ) : (
@@ -308,7 +294,7 @@ export default function ApiKey() {
                                 secondary
                                 onClick={() => {
                                     setError(null);
-                                    setConfirmAction(k.id);
+                                    setConfirmAction({ id: k.id });
                                 }}
                             />
                         )}
