@@ -528,16 +528,17 @@ export async function getApiTokenStatus() {
     });
 }
 
-export async function generateApiToken() {
+export async function generateApiToken(label) {
     return await apiRequest({
         endpoint: "/users/api-token",
         method: "POST",
+        ...(label ? { body: { label } } : {}),
     });
 }
 
-export async function revokeApiToken() {
+export async function revokeApiToken(id) {
     return await apiRequest({
-        endpoint: "/users/api-token",
+        endpoint: `/users/api-token/${id}`,
         method: "DELETE",
     });
 }
